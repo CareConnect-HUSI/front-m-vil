@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CareConnect</string>
+    <string name="cotraseña"> <u>Olvide mi contraseña</u>.</string>
 </resources>
