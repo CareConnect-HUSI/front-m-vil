@@ -11,14 +11,13 @@
     <!-- Logo -->
     <ImageView
         android:id="@+id/login_image"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
         android:src="@drawable/image_logo"
-        android:contentDescription="Imagen de enfermera"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="100dp"/>
+        android:layout_marginTop="80dp"/>
 
     <!-- Título -->
     <com.google.android.material.textview.MaterialTextView
@@ -41,14 +40,14 @@
         app:layout_constraintTop_toBottomOf="@+id/login_title"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="20dp"
         android:layout_marginHorizontal="30dp">
 
         <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/email_edit_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/rounded_corner"
-            android:hint="Usuario/Correo" />
+            android:hint="Usuario" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Campo de contraseña -->
@@ -64,26 +63,26 @@
     app:endIconMode="password_toggle">
 
         <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/password_edit_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/rounded_corner"
             android:hint="Contraseña" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Botón de iniciar sesión -->
     <Button
         android:id="@+id/login_button"
-        android:layout_width="250dp"
+        android:layout_width="210dp"
         android:layout_height="50dp"
         android:text="INICIAR SESIÓN"
         android:textAllCaps="false"
-        android:background="@drawable/gradient_color"
+        android:backgroundTint="@color/app_blue"
         android:textColor="@android:color/white"
         app:layout_constraintTop_toBottomOf="@id/password_input"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="20dp"
-        android:layout_marginHorizontal="30dp"/>
+        android:layout_marginHorizontal="30dp" />
 
     <!-- Texto Olvido de contraseña -->
     <TextView
@@ -93,7 +92,6 @@
         android:text="@string/cotraseña"
         android:textColor="@color/app_blue"
         android:textSize="14sp"
-        android:tex="bold"
         app:layout_constraintTop_toBottomOf="@id/login_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
