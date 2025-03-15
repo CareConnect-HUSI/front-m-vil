@@ -8,6 +8,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.careconnect.R
+import com.example.careconnect.logInPage.listaPacientes.PacientesActivity
 import com.google.android.material.textfield.TextInputEditText
 
 class LoginActivity : AppCompatActivity() {
@@ -29,7 +30,10 @@ class LoginActivity : AppCompatActivity() {
                 Toast.makeText(this, "Por favor ingresa todos los datos", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Iniciando sesión...", Toast.LENGTH_SHORT).show()
-                // Aquí puedes agregar lógica para autenticar al usuario
+                val intent = Intent(this, PacientesActivity::class.java)
+                intent.putExtra("NOMBRE_ENFERMERA", "Enfermera")
+                startActivity(intent)
+                finish()
             }
         }
 
