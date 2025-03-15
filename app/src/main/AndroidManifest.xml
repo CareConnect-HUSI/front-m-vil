@@ -25,6 +25,9 @@
 
         <activity android:name=".logInPage.listaPacientes.PacientesActivity"
             android:exported="true"/>
+
+        <activity android:name=".logInPage.infoPacientes.DetallePacienteActivity"
+            android:exported="true"/>
     </application>
 
 </manifest>

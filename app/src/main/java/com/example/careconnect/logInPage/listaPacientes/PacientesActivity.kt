@@ -27,14 +27,14 @@ class PacientesActivity : AppCompatActivity() {
 
         // Lista de pacientes de prueba
         val pacientes = listOf(
-            Paciente("Juan Pérez", "10:00 AM", "Calle 123"),
-            Paciente("María López", "11:30 AM", "Av. Central 456"),
-            Paciente("Carlos Gómez", "02:00 PM", "Carrera 789"),
-            Paciente("Ana Torres", "04:15 PM", "Diagonal 101"),
+            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Calle 123, Bogotá"),
+            Paciente("María Gómez", "50", "Diabetes", "09:00", "Carrera 45 #12, Medellín"),
+            Paciente("Carlos López", "60", "Asma", "10:15", "Avenida Siempre Viva, Cali")
         )
 
+
         // Configurar adaptador
-        val adapter = PacienteAdapter(pacientes)
+        val adapter = PacienteAdapter(this, pacientes)
         recyclerView.adapter = adapter
     }
 }
