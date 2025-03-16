@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
+import android.net.Uri
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
@@ -46,9 +47,11 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
 
         // Acción al presionar el botón de "Ruta"
         holder.rutaButton.setOnClickListener {
-            // Aquí puedes agregar la lógica para abrir Google Maps con la dirección
+            val uri = Uri.parse("geo:0,0?q=${Uri.encode(paciente.direccion)}")
+            val intent = Intent(Intent.ACTION_VIEW, uri)
+            intent.setPackage("com.google.android.apps.maps") // Abrir en Google Maps
+            context.startActivity(intent)
         }
     }
-
     override fun getItemCount() = pacientes.size
 }
