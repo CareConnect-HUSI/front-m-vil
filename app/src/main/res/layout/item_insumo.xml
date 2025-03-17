@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="10dp"
+    android:gravity="center_vertical"
+    android:background="@android:color/white">
+
+    <TextView
+        android:id="@+id/codigo_insumo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Código"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:padding="5dp"/>
+
+    <TextView
+        android:id="@+id/nombre_insumo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:text="Nombre"
+        android:textSize="16sp"
+        android:padding="5dp"/>
+
+    <!-- Botón para disminuir cantidad -->
+    <ImageView
+        android:id="@+id/button_decrease"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/image_minus"
+        android:contentDescription="Disminuir cantidad"
+        android:padding="5dp"
+        android:layout_marginEnd="5dp"/>
+
+    <!-- Cantidad seleccionada -->
+    <TextView
+        android:id="@+id/text_cantidad"
+        android:layout_width="32dp"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:gravity="center"
+        android:textSize="16sp"
+        android:padding="5dp"/>
+
+    <!-- Botón para aumentar cantidad -->
+    <ImageView
+        android:id="@+id/button_increase"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/image_cross"
+        android:contentDescription="Aumentar cantidad"
+        android:padding="5dp"
+        android:layout_marginStart="5dp"/>
+</LinearLayout>
