@@ -28,6 +28,9 @@
 
         <activity android:name=".logInPage.infoPacientes.DetallePacienteActivity"
             android:exported="true"/>
+
+        <activity android:name=".logInPage.registrarInsumos.RegistrarInsumoActivity"
+            android:exported="true"/>
     </application>
 
 </manifest>

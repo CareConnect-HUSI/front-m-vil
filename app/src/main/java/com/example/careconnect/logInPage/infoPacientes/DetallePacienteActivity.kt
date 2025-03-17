@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.example.careconnect.R
+import com.example.careconnect.logInPage.registrarInsumos.RegistrarInsumoActivity
 import java.util.*
 
 class DetallePacienteActivity : AppCompatActivity() {
@@ -52,15 +53,8 @@ class DetallePacienteActivity : AppCompatActivity() {
         // Botón para registrar insumos
         val registrarInsumosButton = findViewById<Button>(R.id.registrar_insumos_button)
         registrarInsumosButton.setOnClickListener {
-            val seleccionados = mutableListOf<String>()
-            if (findViewById<CheckBox>(R.id.checkBox1).isChecked) seleccionados.add(spinner1.selectedItem.toString())
-            if (findViewById<CheckBox>(R.id.checkBox2).isChecked) seleccionados.add(spinner2.selectedItem.toString())
-
-            if (seleccionados.isEmpty()) {
-                Toast.makeText(this, "No se ha seleccionado ningún insumo", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Insumos registrados: ${seleccionados.joinToString(", ")}", Toast.LENGTH_SHORT).show()
-            }
+            val intent = Intent(this, RegistrarInsumoActivity::class.java)
+            startActivity(intent)
         }
 
         // Botón para guardar datos
