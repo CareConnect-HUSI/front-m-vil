@@ -3,6 +3,8 @@ package com.example.careconnect.logInPage.infoPacientes
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.DialogInterface
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -29,6 +31,7 @@ class DetallePacienteActivity : AppCompatActivity() {
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
         val edadPaciente = intent.getStringExtra("EDAD_PACIENTE") ?: "Edad no disponible"
         val diagnosticoPaciente = intent.getStringExtra("DIAGNOSTICO_PACIENTE") ?: "Diagnóstico no disponible"
+        val direccionPaciente = intent.getStringExtra("DIRECCION_PACIENTE") ?: ""
 
         // Asignar datos a la interfaz
         findViewById<TextView>(R.id.detalle_nombre_paciente).text = nombrePaciente
@@ -55,6 +58,11 @@ class DetallePacienteActivity : AppCompatActivity() {
             mostrarTimePicker(horaSalidaText)
         }
 
+        val botonRuta = findViewById<Button>(R.id.ruta_button)
+        botonRuta.setOnClickListener {
+            abrirMapa(direccionPaciente)
+        }
+
         // Botón para registrar insumos (Abre el pop-up)
         val registrarInsumosButton = findViewById<Button>(R.id.registrar_insumos_button)
         registrarInsumosButton.setOnClickListener {
@@ -76,6 +84,17 @@ class DetallePacienteActivity : AppCompatActivity() {
             Insumo("102", "Alcohol"),
             Insumo("203", "Vendas")
         )
+    }
+
+    private fun abrirMapa(direccion: String) {
+        if (direccion.isNotEmpty()) {
+            val uri = Uri.parse("geo:0,0?q=${Uri.encode(direccion)}")
+            val intent = Intent(Intent.ACTION_VIEW, uri)
+            intent.setPackage("com.google.android.apps.maps") // Asegura que se abra en Google Maps
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, "Dirección no disponible", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun mostrarTimePicker(textView: TextView) {
