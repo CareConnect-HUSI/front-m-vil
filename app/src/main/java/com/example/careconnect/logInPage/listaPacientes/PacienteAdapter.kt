@@ -6,7 +6,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.net.Uri
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
@@ -18,11 +20,10 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
     RecyclerView.Adapter<PacienteAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val avatarPaciente: ImageView = view.findViewById(R.id.avatar_paciente)
         val nombrePaciente: TextView = view.findViewById(R.id.nombre_paciente)
         val horaAtencion: TextView = view.findViewById(R.id.hora_atencion)
         val direccion: TextView = view.findViewById(R.id.direccion_paciente)
-        val rutaButton: ImageView = view.findViewById(R.id.ruta_button)
+        val botonDetallePaciente: LinearLayout = view.findViewById(R.id.boton_detalle_paciente)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -37,21 +38,15 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.horaAtencion.text = "Hora: ${paciente.hora}"
         holder.direccion.text = "Dirección: ${paciente.direccion}"
 
-        holder.avatarPaciente.setOnClickListener {
+        holder.botonDetallePaciente.setOnClickListener {
             val intent = Intent(context, DetallePacienteActivity::class.java)
             intent.putExtra("NOMBRE_PACIENTE", paciente.nombre)
             intent.putExtra("EDAD_PACIENTE", paciente.edad)
             intent.putExtra("DIAGNOSTICO_PACIENTE", paciente.diagnostico)
+            intent.putExtra("DIRECCION_PACIENTE", paciente.direccion)
             context.startActivity(intent)
         }
 
-        // Acción al presionar el botón de "Ruta"
-        holder.rutaButton.setOnClickListener {
-            val uri = Uri.parse("geo:0,0?q=${Uri.encode(paciente.direccion)}")
-            val intent = Intent(Intent.ACTION_VIEW, uri)
-            intent.setPackage("com.google.android.apps.maps") // Abrir en Google Maps
-            context.startActivity(intent)
-        }
     }
     override fun getItemCount() = pacientes.size
 }
