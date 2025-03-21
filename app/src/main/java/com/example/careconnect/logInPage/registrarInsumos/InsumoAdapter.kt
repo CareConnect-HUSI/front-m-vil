@@ -30,7 +30,7 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
         val insumo = insumos[position]
         holder.codigo.text = insumo.codigo
         holder.nombre.text = insumo.nombre
-        holder.cantidadText.text = "1"
+        holder.cantidadText.text = "0"
 
         // Lógica del contador
         holder.buttonIncrease.setOnClickListener {
@@ -41,7 +41,7 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
 
         holder.buttonDecrease.setOnClickListener {
             var cantidad = holder.cantidadText.text.toString().toInt()
-            if (cantidad > 0) {
+            if (cantidad > 1) {
                 cantidad--
                 holder.cantidadText.text = cantidad.toString()
             }

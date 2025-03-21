@@ -22,7 +22,7 @@ class RegistrarInsumoActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_registrar_insumos)
+        setContentView(R.layout.dialog_registrar_insumo)
 
         recyclerView = findViewById(R.id.recyclerViewResultados)
         searchInput = findViewById(R.id.search_input)
