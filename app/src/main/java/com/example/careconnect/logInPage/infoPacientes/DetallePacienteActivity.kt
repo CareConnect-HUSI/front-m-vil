@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
+import com.example.careconnect.logInPage.LoginActivity
 import com.example.careconnect.logInPage.registrarInsumos.InsumoAdapter
 import com.example.careconnect.logInPage.registrarInsumos.Insumo
 import java.util.Calendar
@@ -47,6 +48,16 @@ class DetallePacienteActivity : AppCompatActivity() {
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, medicamentos)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+
+        // Botón de volver atrás
+        findViewById<ImageView>(R.id.btnBack).setOnClickListener {
+            Toast.makeText(this, "No se puede volver", Toast.LENGTH_SHORT).show()
+        }
+
+        // Botón de cerrar sesión
+        findViewById<ImageView>(R.id.btnLogout).setOnClickListener {
+            mostrarDialogoCerrarSesion()
+        }
 
         // Selector de hora para llegada
         botonHoraLlegada.setOnClickListener {
@@ -84,6 +95,25 @@ class DetallePacienteActivity : AppCompatActivity() {
             Insumo("102", "Alcohol"),
             Insumo("203", "Vendas")
         )
+    }
+
+    private fun mostrarDialogoCerrarSesion() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Cerrar sesión")
+        builder.setMessage("¿Estás seguro de que quieres cerrar sesión?")
+        builder.setPositiveButton("Sí") { _, _ ->
+            cerrarSesion()
+        }
+        builder.setNegativeButton("No", null)
+        builder.show()
+    }
+
+    private fun cerrarSesion() {
+        // Redirigir a la pantalla de login
+        val intent = Intent(this, LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 
     private fun abrirMapa(direccion: String) {

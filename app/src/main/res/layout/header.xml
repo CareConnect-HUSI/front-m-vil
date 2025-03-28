@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="10dp"
+    android:background="@color/white"
+    android:gravity="center_vertical">
+
+    <!-- Botón de retroceso -->
+    <ImageView
+        android:id="@+id/btnBack"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:src="@drawable/image_arrow"
+        android:contentDescription="Volver"
+        android:padding="5dp"
+        android:layout_gravity="center_vertical"/>
+
+    <!-- Espaciador -->
+    <View
+        android:layout_width="0dp"
+        android:layout_height="14dp"
+        android:layout_weight="1" />
+
+    <!-- Logo en el centro -->
+    <ImageView
+        android:id="@+id/imgLogo"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/image_logo"
+        android:contentDescription="Logo"
+        android:layout_gravity="center"/>
+
+    <!-- Espaciador -->
+    <View
+        android:layout_width="0dp"
+        android:layout_height="10dp"
+        android:layout_weight="1" />
+
+    <!-- Botón de cerrar sesión -->
+    <ImageView
+        android:id="@+id/btnLogout"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:src="@drawable/image_logout"
+        android:contentDescription="Cerrar sesión"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="5dp"
+        android:layout_gravity="center_vertical"/>
+</LinearLayout>
