@@ -1,18 +1,31 @@
 package com.example.careconnect.logInPage.listaPacientes
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
+import com.example.careconnect.logInPage.LoginActivity
 
 class PacientesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pacientes)
+
+        // Botón de volver atrás
+        findViewById<ImageView>(R.id.btnBack).setOnClickListener {
+            onBackPressedDispatcher.onBackPressed() // Volver a la pantalla anterior
+        }
+
+        // Botón de cerrar sesión
+        findViewById<ImageView>(R.id.btnLogout).setOnClickListener {
+            mostrarDialogoCerrarSesion()
+        }
 
         // Obtener el nombre de la enfermera desde el Intent
         val nombreEnfermera = intent.getStringExtra("NOMBRE_ENFERMERA") ?: "Enfermera"
@@ -32,9 +45,27 @@ class PacientesActivity : AppCompatActivity() {
             Paciente("Carlos López", "60", "Asma", "10:15", "Avenida Siempre Viva, Cali")
         )
 
-
         // Configurar adaptador
         val adapter = PacienteAdapter(this, pacientes)
         recyclerView.adapter = adapter
+    }
+
+    private fun mostrarDialogoCerrarSesion() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Cerrar sesión")
+        builder.setMessage("¿Estás seguro de que quieres cerrar sesión?")
+        builder.setPositiveButton("Sí") { _, _ ->
+            cerrarSesion()
+        }
+        builder.setNegativeButton("No", null)
+        builder.show()
+    }
+
+    private fun cerrarSesion() {
+        // Redirigir a la pantalla de login
+        val intent = Intent(this, LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 }
