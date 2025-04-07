@@ -43,15 +43,9 @@ class DetallePacienteActivity : AppCompatActivity() {
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)
         val botonHoraSalida = findViewById<Button>(R.id.boton_hora_salida)
 
-        // Lista de medicamentos disponibles
-        val medicamentos = arrayOf("Paracetamol", "Ibuprofeno", "Amoxicilina", "Omeprazol")
-
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, medicamentos)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
         // Botón de volver atrás
         findViewById<ImageView>(R.id.btnBack).setOnClickListener {
-            Toast.makeText(this, "No se puede volver", Toast.LENGTH_SHORT).show()
+            onBackPressedDispatcher.onBackPressed() // Volver a la pantalla anterior
         }
 
         // Botón de cerrar sesión
@@ -85,15 +79,13 @@ class DetallePacienteActivity : AppCompatActivity() {
         val guardarDatosButton = findViewById<Button>(R.id.guardar_datos_button)
         guardarDatosButton.setOnClickListener {
             Toast.makeText(this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show()
+            onBackPressedDispatcher.onBackPressed() // Volver a la pantalla anterior
         }
 
         // Lista de insumos de prueba
         listaInsumos = listOf(
-            Insumo("022", "Jeringa"),
-            Insumo("045", "Gasas"),
-            Insumo("078", "Guantes"),
-            Insumo("102", "Alcohol"),
-            Insumo("203", "Vendas")
+            Insumo("022", "Insumo Procedimiento #1"),
+            Insumo("045", "Insumo Procedimiento #2")
         )
     }
 

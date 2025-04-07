@@ -32,11 +32,8 @@ class RegistrarInsumoActivity : AppCompatActivity() {
 
         // Lista de insumos de prueba
         listaInsumos = listOf(
-            Insumo("022", "Jeringa"),
-            Insumo("045", "Gasas"),
-            Insumo("078", "Guantes"),
-            Insumo("102", "Alcohol"),
-            Insumo("203", "Vendas")
+            Insumo("022", "Insumo Procedimiento #1"),
+            Insumo("045", "Insumo Procedimiento #2")
         )
 
         // Configurar adaptador
