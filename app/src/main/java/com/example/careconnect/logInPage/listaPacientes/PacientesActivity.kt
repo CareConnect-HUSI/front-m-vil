@@ -54,7 +54,7 @@ class PacientesActivity : AppCompatActivity() {
     private fun mostrarDialogoCerrarSesion() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Cerrar sesión")
-        builder.setMessage("¿Estás seguro de que quieres cerrar sesión?")
+        builder.setMessage("La informacion no guardada sera eliminada, ¿Estás seguro de que quieres cerrar sesión?")
         builder.setPositiveButton("Sí") { _, _ ->
             cerrarSesion()
         }
