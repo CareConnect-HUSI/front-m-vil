@@ -41,7 +41,7 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
 
         holder.buttonDecrease.setOnClickListener {
             var cantidad = holder.cantidadText.text.toString().toInt()
-            if (cantidad > 1) {
+            if (cantidad > 0) {
                 cantidad--
                 holder.cantidadText.text = cantidad.toString()
             }

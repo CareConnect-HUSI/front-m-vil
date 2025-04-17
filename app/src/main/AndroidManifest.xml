@@ -33,7 +33,7 @@
         <activity android:name=".logInPage.infoPacientes.DetallePacienteActivity"
             android:exported="true"/>
 
-        <activity android:name=".logInPage.registrarInsumos.RegistrarInsumoActivity"
+        <activity android:name=".logInPage.infoPacientes.VisitaPaciente"
             android:exported="true"/>
     </application>
 
