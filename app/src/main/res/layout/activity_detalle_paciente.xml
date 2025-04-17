@@ -69,7 +69,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Diagnóstico"
+            android:text="Direccion"
+            android:textSize="16sp"
+            android:textColor="@color/black"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Telefono"
             android:textSize="16sp"
             android:textColor="@color/black"/>
     </LinearLayout>
@@ -87,134 +94,20 @@
 
     <!-- Selección de horas -->
 
-    <!-- Lista de medicamentos con CheckBoxes y Spinner -->
-
-    <LinearLayout
-        android:id="@+id/hora_llegada"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/linea_divisoria">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Hora de llegada:"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/hora_llegada_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="8dp"
-            android:text="00:00"
-            android:textColor="@color/black"
-            android:textSize="16sp" />
-
-        <Button
-            android:id="@+id/boton_hora_llegada"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:backgroundTint="@color/app_gray"
-            android:text="Seleccionar" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/checkbox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-
-        app:layout_constraintTop_toBottomOf="@id/hora_llegada"
-        android:layout_marginTop="16dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <CheckBox
-                android:id="@+id/checkBox1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Aplicar medicamento #1"/>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <CheckBox
-                android:id="@+id/checkBox2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Aplicar medicamento #2"/>
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- Hora de salida -->
-
-
-    <!-- Botones -->
-
-    <LinearLayout
-        android:id="@+id/hora_salida"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/checkbox">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Hora de salida:"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/hora_salida_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="8dp"
-            android:text="00:00"
-            android:textColor="@color/black"
-            android:textSize="16sp" />
-
-        <Button
-            android:id="@+id/boton_hora_salida"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:backgroundTint="@color/app_gray"
-            android:text="Seleccionar" />
-    </LinearLayout>
 
     <Button
-        android:id="@+id/registrar_insumos_button"
+        android:id="@+id/iniciarVisita"
         android:layout_width="170dp"
         android:layout_height="50dp"
         android:layout_marginTop="20dp"
         android:backgroundTint="@color/app_blue"
-        android:text="Registrar Insumos"
+        android:text="Iniciar Visita"
         android:textAllCaps="false"
         android:textColor="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.933"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/comentarios" />
+        app:layout_constraintTop_toBottomOf="@id/linea_divisoria" />
 
     <Button
         android:id="@+id/ruta_button"
@@ -228,38 +121,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.071"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/comentarios" />
+        app:layout_constraintTop_toBottomOf="@id/linea_divisoria" />
 
-    <Button
-        android:id="@+id/guardar_datos_button"
-        android:layout_width="350dp"
-        android:layout_height="50dp"
-        android:text="Guardar Datos"
-        android:textAllCaps="false"
-        android:backgroundTint="@color/app_blue"
-        android:textColor="@android:color/white"
-        android:layout_marginTop="10dp"
-        app:layout_constraintTop_toBottomOf="@id/registrar_insumos_button"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/comentarios"
-        android:layout_width="409dp"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="1dp"
-        tools:layout_editor_absoluteY="423dp"
-        app:layout_constraintTop_toBottomOf="@id/hora_salida"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:layout_marginStart="10dp"
-            android:layout_marginEnd="10dp"
-            android:hint="Comentarios" />
-    </com.google.android.material.textfield.TextInputLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
