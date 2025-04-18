@@ -54,7 +54,7 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
     }
 
     fun actualizarLista(nuevaLista: List<Insumo>) {
-        insumos = nuevaLista
+        insumos = nuevaLista.toMutableList()
         notifyDataSetChanged()
     }
 
