@@ -79,7 +79,7 @@ class VisitaPaciente : AppCompatActivity() {
 
         // Hora de llegada y salida
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)
-        val botonHoraSalida = findViewById<ImageView>(R.id.boton_hora_salida)
+        val botonHoraSalida = findViewById<ImageView>(R.id.boton_reloj)
 
         // Obtener EditText desde el TextInputLayout
         val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
@@ -108,7 +108,7 @@ class VisitaPaciente : AppCompatActivity() {
         searchInput = findViewById(R.id.search_input)
         searchButton = findViewById(R.id.search_button)
 
-        val mapaInsumos = insumosGuardados?.split(",")?.mapNotNull {
+        val mapaInsumos = insumosGuardados?.split(";")?.mapNotNull {
             val partes = it.split(":")
             if (partes.size == 2) {
                 val codigo = partes[0]
@@ -136,9 +136,9 @@ class VisitaPaciente : AppCompatActivity() {
             }
 
             listaInsumos = listaInsumos.map { insumo ->
-                adapter.actualizarLista(listaInsumos)
                 insumo.copy(cantidad = mapaCantidades[insumo.codigo] ?: 0)
             }
+            adapter.actualizarLista(listaInsumos)
         }
 
         findViewById<ImageView>(R.id.btnBack).setOnClickListener {
@@ -169,6 +169,9 @@ class VisitaPaciente : AppCompatActivity() {
         botonGuardar.setOnClickListener {
             mostrarDialogoGuardarDatos()
         }
+
+        configurarInterfazSegunEstado()
+
     }
 
     private fun filtrarInsumos(query: String) {
@@ -224,7 +227,7 @@ class VisitaPaciente : AppCompatActivity() {
     }
 
     private fun habilitarControles(habilitar: Boolean) {
-        findViewById<ImageView>(R.id.boton_hora_salida).isEnabled = habilitar
+        findViewById<ImageView>(R.id.boton_reloj).isEnabled = habilitar
         findViewById<CheckBox>(R.id.checkBox1).isEnabled = habilitar
         findViewById<CheckBox>(R.id.checkBox2).isEnabled = habilitar
         findViewById<RecyclerView>(R.id.listainsumos).isEnabled = habilitar
