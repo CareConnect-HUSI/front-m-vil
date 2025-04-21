@@ -14,6 +14,11 @@ import com.example.careconnect.logInPage.LoginActivity
 
 class PacientesActivity : AppCompatActivity() {
 
+    override fun onResume() {
+        super.onResume()
+        cargarListaPacientes()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pacientes)
@@ -30,6 +35,7 @@ class PacientesActivity : AppCompatActivity() {
 
         // Obtener el nombre de la enfermera desde el Intent
         val nombreEnfermera = intent.getStringExtra("NOMBRE_ENFERMERA") ?: "Enfermera"
+        val sharedPrefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
 
         // Configurar el título
         val titleTextView = findViewById<TextView>(R.id.nurse_name)
@@ -41,14 +47,38 @@ class PacientesActivity : AppCompatActivity() {
 
         // Lista de pacientes de prueba
         val pacientes = listOf(
-            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá"),
-            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá"),
-            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca")
+            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá", obtenerEstado("Juan Pérez", sharedPrefs)),
+            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá", obtenerEstado("María Gómez", sharedPrefs)),
+            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca", obtenerEstado("Carlos López", sharedPrefs))
         )
 
         // Configurar adaptador
         val adapter = PacienteAdapter(this, pacientes)
         recyclerView.adapter = adapter
+    }
+
+    private fun obtenerEstado(nombre: String, prefs: android.content.SharedPreferences): String {
+        return when (prefs.getInt("estado_visita_$nombre", 0)) {
+            0 -> "NO_INICIADA"
+            1 -> "EN_PROCESO"
+            2 -> "FINALIZADA"
+            else -> "NO_INICIADA"
+        }
+    }
+
+    private fun cargarListaPacientes() {
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewPacientes)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        val prefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
+
+        val pacientes = listOf(
+            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá", obtenerEstado("Juan Pérez", prefs)),
+            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá", obtenerEstado("María Gómez", prefs)),
+            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca", obtenerEstado("Carlos López", prefs))
+        )
+
+        recyclerView.adapter = PacienteAdapter(this, pacientes)
     }
 
     private fun mostrarDialogoCerrarSesion() {
