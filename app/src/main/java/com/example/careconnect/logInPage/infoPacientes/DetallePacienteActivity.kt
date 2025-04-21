@@ -26,6 +26,13 @@ import java.util.Locale
 class DetallePacienteActivity : AppCompatActivity() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var visitaIniciada = false
+
+    override fun onResume() {
+        super.onResume()
+        actualizarBotonVisita()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalle_paciente)
@@ -38,6 +45,7 @@ class DetallePacienteActivity : AppCompatActivity() {
         val edadPaciente = intent.getStringExtra("EDAD_PACIENTE") ?: "Edad no disponible"
         val direccionPaciente = intent.getStringExtra("DIRECCION_PACIENTE") ?: ""
         val telefono = intent.getStringExtra("TELEFONO_PACIENTE") ?: "Telefono no disponible"
+        val botonVisita = findViewById<Button>(R.id.iniciarVisita)
 
         // Asignar datos a la interfaz
         findViewById<TextView>(R.id.detalle_nombre_paciente).text = nombrePaciente
@@ -57,13 +65,116 @@ class DetallePacienteActivity : AppCompatActivity() {
             abrirMapa(direccionPaciente)
         }
 
-        val botonVisita = findViewById<Button>(R.id.iniciarVisita)
         botonVisita.setOnClickListener {
-            val intent = Intent(this, VisitaPaciente::class.java)
-            intent.putExtra("NOMBRE_ENFERMERA", "Enfermera")
-            startActivity(intent)
-            finish()
+           verificarUbicacionYRegistrarHora(nombrePaciente, direccionPaciente, botonVisita)
         }
+    }
+
+    private fun verificarUbicacionYRegistrarHora(nombrePaciente: String, direccionPaciente: String, botonVisita : Button) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1001)
+            return
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                val latUsuario = location.latitude
+                val lonUsuario = location.longitude
+
+                try {
+                    val geocoder = Geocoder(this, Locale.getDefault())
+                    val resultados = geocoder.getFromLocationName(direccionPaciente, 1)
+
+                    if (resultados != null && resultados.isNotEmpty()) {
+                        val direccionLocalizada = resultados[0]
+                        val latPaciente = direccionLocalizada.latitude
+                        val lonPaciente = direccionLocalizada.longitude
+
+                        val distancia = calcularDistancia(latUsuario, lonUsuario, latPaciente, lonPaciente)
+
+                        if (distancia <= 1.0) {
+                            val intent = Intent (this, VisitaPaciente::class.java)
+                            intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)
+
+                            val estadoActual = cargarEstadoVisita(nombrePaciente)
+
+                            // Cambiar el estado solo si es una nueva visita
+                            if (estadoActual == VisitaPaciente.ESTADO_NO_INICIADA) {
+                                // Nueva visita
+                                intent.putExtra("NUEVA_VISITA", true)
+                                val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                                intent.putExtra("HORA_LLEGADA", horaActual)
+                                guardarEstadoVisita(nombrePaciente, VisitaPaciente.ESTADO_EN_PROGRESO)
+                            } else {
+                                // Visita existente
+                                intent.putExtra("ESTADO_VISITA", estadoActual)
+                            }
+
+                            startActivity(intent)
+
+                        } else {
+                            Toast.makeText(this, "Estás a más de 1km del paciente", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this, "No se pudo localizar la dirección del paciente", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                    Toast.makeText(this, "Error al buscar dirección", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "No se pudo obtener la ubicación actual", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun calcularDistancia(
+        lat1: Double, lon1: Double,
+        lat2: Double, lon2: Double
+    ): Float {
+        val loc1 = Location("").apply {
+            latitude = lat1
+            longitude = lon1
+        }
+        val loc2 = Location("").apply {
+            latitude = lat2
+            longitude = lon2
+        }
+        return loc1.distanceTo(loc2) / 1000  // Devuelve la distancia en km
+    }
+
+    private fun guardarEstadoVisita(nombrePaciente: String, estado: Int) {
+        val prefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
+        prefs.edit().putInt("estado_visita_$nombrePaciente", estado).apply()
+    }
+
+    private fun actualizarBotonVisita() {
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
+        val estado = cargarEstadoVisita(nombrePaciente)
+
+        findViewById<Button>(R.id.iniciarVisita).text = when (estado) {
+            VisitaPaciente.ESTADO_NO_INICIADA -> "Iniciar Visita"
+            VisitaPaciente.ESTADO_EN_PROGRESO -> "Continuar Visita"
+            VisitaPaciente.ESTADO_COMPLETADA -> "Ver Visita"
+            else -> "Iniciar Visita"
+        }
+    }
+
+    private fun cargarEstadoVisita(nombrePaciente: String): Int {
+        val prefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
+        // Primero intentamos cargar como Int (nuevo sistema)
+        if (prefs.contains("estado_visita_$nombrePaciente")) {
+            return prefs.getInt("estado_visita_$nombrePaciente", VisitaPaciente.ESTADO_NO_INICIADA)
+        }
+
+        // Migración: si existe el antiguo booleano, lo convertimos
+        if (prefs.contains("visita_iniciada_$nombrePaciente")) {
+            val iniciada = prefs.getBoolean("visita_iniciada_$nombrePaciente", false)
+            val estado = if (iniciada) VisitaPaciente.ESTADO_EN_PROGRESO else VisitaPaciente.ESTADO_NO_INICIADA
+            guardarEstadoVisita(nombrePaciente, estado)
+            return estado
+        }
+        return VisitaPaciente.ESTADO_NO_INICIADA
     }
 
     private fun mostrarDialogoCerrarSesion() {

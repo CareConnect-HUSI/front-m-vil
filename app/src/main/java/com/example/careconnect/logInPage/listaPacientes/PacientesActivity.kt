@@ -43,7 +43,7 @@ class PacientesActivity : AppCompatActivity() {
         val pacientes = listOf(
             Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá"),
             Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá"),
-            Paciente("Carlos López", "60", "Asma", "10:15", "Cra 15 #63a66, Bogotá")
+            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca")
         )
 
         // Configurar adaptador

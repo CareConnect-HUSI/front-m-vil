@@ -7,7 +7,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
-import com.example.careconnect.logInPage.registrarInsumos.Insumo
 
 class InsumoAdapter(private var insumos: List<Insumo>) :
     RecyclerView.Adapter<InsumoAdapter.ViewHolder>() {
@@ -30,13 +29,14 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
         val insumo = insumos[position]
         holder.codigo.text = insumo.codigo
         holder.nombre.text = insumo.nombre
-        holder.cantidadText.text = "0"
+        holder.cantidadText.text = insumo.cantidad.toString()
 
         // Lógica del contador
         holder.buttonIncrease.setOnClickListener {
             var cantidad = holder.cantidadText.text.toString().toInt()
             cantidad++
             holder.cantidadText.text = cantidad.toString()
+            insumos[position].cantidad = cantidad
         }
 
         holder.buttonDecrease.setOnClickListener {
@@ -44,6 +44,7 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
             if (cantidad > 0) {
                 cantidad--
                 holder.cantidadText.text = cantidad.toString()
+                insumos[position].cantidad = cantidad
             }
         }
     }
@@ -53,7 +54,11 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
     }
 
     fun actualizarLista(nuevaLista: List<Insumo>) {
-        insumos = nuevaLista
+        insumos = nuevaLista.toMutableList()
         notifyDataSetChanged()
+    }
+
+    fun obtenerLista(): List<Insumo> {
+        return insumos
     }
 }
