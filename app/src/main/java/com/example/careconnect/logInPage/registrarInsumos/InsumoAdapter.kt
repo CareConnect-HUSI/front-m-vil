@@ -11,6 +11,13 @@ import com.example.careconnect.R
 class InsumoAdapter(private var insumos: List<Insumo>) :
     RecyclerView.Adapter<InsumoAdapter.ViewHolder>() {
 
+    private var editable: Boolean = true
+
+    fun setEditable(valor: Boolean) {
+        editable = valor
+        notifyDataSetChanged()
+    }
+
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val codigo: TextView = view.findViewById(R.id.codigo_insumo)
         val nombre: TextView = view.findViewById(R.id.nombre_insumo)
@@ -31,21 +38,29 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
         holder.nombre.text = insumo.nombre
         holder.cantidadText.text = insumo.cantidad.toString()
 
-        // Lógica del contador
-        holder.buttonIncrease.setOnClickListener {
-            var cantidad = holder.cantidadText.text.toString().toInt()
-            cantidad++
-            holder.cantidadText.text = cantidad.toString()
-            insumos[position].cantidad = cantidad
-        }
+        holder.buttonIncrease.isEnabled = editable
+        holder.buttonDecrease.isEnabled = editable
 
-        holder.buttonDecrease.setOnClickListener {
-            var cantidad = holder.cantidadText.text.toString().toInt()
-            if (cantidad > 0) {
-                cantidad--
+        if (editable) {
+            holder.buttonIncrease.setOnClickListener {
+                var cantidad = holder.cantidadText.text.toString().toInt()
+                cantidad++
                 holder.cantidadText.text = cantidad.toString()
                 insumos[position].cantidad = cantidad
             }
+
+            holder.buttonDecrease.setOnClickListener {
+                var cantidad = holder.cantidadText.text.toString().toInt()
+                if (cantidad > 0) {
+                    cantidad--
+                    holder.cantidadText.text = cantidad.toString()
+                    insumos[position].cantidad = cantidad
+                }
+            }
+        } else {
+            // Si no es editable, eliminar los listeners para evitar interacciones
+            holder.buttonIncrease.setOnClickListener(null)
+            holder.buttonDecrease.setOnClickListener(null)
         }
     }
 

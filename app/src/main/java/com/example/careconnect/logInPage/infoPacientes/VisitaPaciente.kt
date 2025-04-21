@@ -209,17 +209,20 @@ class VisitaPaciente : AppCompatActivity() {
             ESTADO_NO_INICIADA -> {
                 // Todos los campos editables
                 habilitarControles(true)
+                adapter.setEditable(true)
                 botonGuardar.text = "Guardar Visita"
             }
             ESTADO_EN_PROGRESO -> {
                 // Campos editables excepto hora de llegada
                 findViewById<TextView>(R.id.hora_llegada_text).isEnabled = false
                 habilitarControles(true)
+                adapter.setEditable(true)
                 botonGuardar.text = "Finalizar Visita"
             }
             ESTADO_COMPLETADA -> {
                 // Solo comentarios editables
                 habilitarControles(false)
+                adapter.setEditable(false)
                 comentariosEditText?.isEnabled = true
                 botonGuardar.text = "Actualizar Comentarios"
             }
