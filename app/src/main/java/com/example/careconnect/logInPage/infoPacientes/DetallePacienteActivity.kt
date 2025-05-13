@@ -79,10 +79,14 @@ class DetallePacienteActivity : AppCompatActivity() {
     }
 
     private fun verificarUbicacionYRegistrarHora(nombrePaciente: String, direccionPaciente: String, botonVisita: Button) {
-        if (hayVisitaEnProgreso()) {
-            Toast.makeText(this, "Debe finalizar la visita anterior antes de iniciar una nueva.", Toast.LENGTH_LONG).show()
+        val hayOtraVisitaEnProgreso = verificarOtraVisitaEnProgreso(nombrePaciente)
+        val estadoActual = cargarEstadoVisita(nombrePaciente)
+
+        if (estadoActual == VisitaPaciente.ESTADO_NO_INICIADA && hayOtraVisitaEnProgreso) {
+            Toast.makeText(this, "No puede iniciar una nueva visita hasta finalizar la anterior.", Toast.LENGTH_LONG).show()
             return
         }
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1001)
             return
@@ -181,6 +185,20 @@ class DetallePacienteActivity : AppCompatActivity() {
             val visita = jsonData.getJSONObject(key)
             if (visita.optInt("estado_visita", VisitaPaciente.ESTADO_NO_INICIADA) == VisitaPaciente.ESTADO_EN_PROGRESO) {
                 return true
+            }
+        }
+        return false
+    }
+
+    fun verificarOtraVisitaEnProgreso(nombreActual: String): Boolean {
+        val jsonData = JsonUtils.loadData(this)
+        for (key in jsonData.keys()) {
+            if (key != nombreActual) {
+                val visita = jsonData.getJSONObject(key)
+                val estado = visita.optInt("estado_visita", VisitaPaciente.ESTADO_NO_INICIADA)
+                if (estado == VisitaPaciente.ESTADO_EN_PROGRESO) {
+                    return true
+                }
             }
         }
         return false
