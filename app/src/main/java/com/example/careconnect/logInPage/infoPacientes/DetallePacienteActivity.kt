@@ -8,16 +8,15 @@ import android.content.Intent
 import android.location.Geocoder
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.careconnect.R
 import com.example.careconnect.logInPage.LoginActivity
-import com.example.careconnect.logInPage.infoPacientes.VisitaPaciente
-import com.example.careconnect.logInPage.listaPacientes.PacientesActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -26,7 +25,24 @@ import java.util.Locale
 class DetallePacienteActivity : AppCompatActivity() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private var visitaIniciada = false
+
+    object JsonUtils {
+        private const val FILE_NAME = "visitas_pacientes.json"
+
+        fun saveData(context: AppCompatActivity, data: JSONObject) {
+            val file = File(context.filesDir, FILE_NAME)
+            file.writeText(data.toString())
+        }
+
+        fun loadData(context: AppCompatActivity): JSONObject {
+            val file = File(context.filesDir, FILE_NAME)
+            return if (file.exists()) {
+                JSONObject(file.readText())
+            } else {
+                JSONObject()
+            }
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -37,40 +53,36 @@ class DetallePacienteActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalle_paciente)
 
-        // Establecer tomo de coordenadas
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        // Obtener datos del intent
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
-        val edadPaciente = intent.getStringExtra("EDAD_PACIENTE") ?: "Edad no disponible"
         val direccionPaciente = intent.getStringExtra("DIRECCION_PACIENTE") ?: ""
-        val telefono = intent.getStringExtra("TELEFONO_PACIENTE") ?: "Telefono no disponible"
         val botonVisita = findViewById<Button>(R.id.iniciarVisita)
 
-        // Asignar datos a la interfaz
         findViewById<TextView>(R.id.detalle_nombre_paciente).text = nombrePaciente
 
-        // Botón de volver atrás
         findViewById<ImageView>(R.id.btnBack).setOnClickListener {
-            onBackPressedDispatcher.onBackPressed() // Volver a la pantalla anterior
+            onBackPressedDispatcher.onBackPressed()
         }
 
-        // Botón de cerrar sesión
         findViewById<ImageView>(R.id.btnLogout).setOnClickListener {
             mostrarDialogoCerrarSesion()
         }
 
-        val botonRuta = findViewById<Button>(R.id.ruta_button)
-        botonRuta.setOnClickListener {
+        findViewById<Button>(R.id.ruta_button).setOnClickListener {
             abrirMapa(direccionPaciente)
         }
 
         botonVisita.setOnClickListener {
-           verificarUbicacionYRegistrarHora(nombrePaciente, direccionPaciente, botonVisita)
+            verificarUbicacionYRegistrarHora(nombrePaciente, direccionPaciente, botonVisita)
         }
     }
 
-    private fun verificarUbicacionYRegistrarHora(nombrePaciente: String, direccionPaciente: String, botonVisita : Button) {
+    private fun verificarUbicacionYRegistrarHora(nombrePaciente: String, direccionPaciente: String, botonVisita: Button) {
+        if (hayVisitaEnProgreso()) {
+            Toast.makeText(this, "Debe finalizar la visita anterior antes de iniciar una nueva.", Toast.LENGTH_LONG).show()
+            return
+        }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1001)
             return
@@ -92,28 +104,25 @@ class DetallePacienteActivity : AppCompatActivity() {
 
                         val distancia = calcularDistancia(latUsuario, lonUsuario, latPaciente, lonPaciente)
 
-                        if (distancia <= 1.0) {
-                            val intent = Intent (this, VisitaPaciente::class.java)
+                        if (distancia <= 100.0) {
+                            val intent = Intent(this, VisitaPaciente::class.java)
                             intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)
 
                             val estadoActual = cargarEstadoVisita(nombrePaciente)
 
-                            // Cambiar el estado solo si es una nueva visita
                             if (estadoActual == VisitaPaciente.ESTADO_NO_INICIADA) {
-                                // Nueva visita
                                 intent.putExtra("NUEVA_VISITA", true)
                                 val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                                 intent.putExtra("HORA_LLEGADA", horaActual)
                                 guardarEstadoVisita(nombrePaciente, VisitaPaciente.ESTADO_EN_PROGRESO)
                             } else {
-                                // Visita existente
                                 intent.putExtra("ESTADO_VISITA", estadoActual)
                             }
 
                             startActivity(intent)
 
                         } else {
-                            Toast.makeText(this, "Estás a más de 1km del paciente", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "No te encuentras en el lugar de la visita", Toast.LENGTH_SHORT).show()
                         }
                     } else {
                         Toast.makeText(this, "No se pudo localizar la dirección del paciente", Toast.LENGTH_SHORT).show()
@@ -128,10 +137,7 @@ class DetallePacienteActivity : AppCompatActivity() {
         }
     }
 
-    private fun calcularDistancia(
-        lat1: Double, lon1: Double,
-        lat2: Double, lon2: Double
-    ): Float {
+    private fun calcularDistancia(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
         val loc1 = Location("").apply {
             latitude = lat1
             longitude = lon1
@@ -140,12 +146,21 @@ class DetallePacienteActivity : AppCompatActivity() {
             latitude = lat2
             longitude = lon2
         }
-        return loc1.distanceTo(loc2) / 1000  // Devuelve la distancia en km
+        return loc1.distanceTo(loc2) / 1000
     }
 
     private fun guardarEstadoVisita(nombrePaciente: String, estado: Int) {
-        val prefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
-        prefs.edit().putInt("estado_visita_$nombrePaciente", estado).apply()
+        val jsonData = JsonUtils.loadData(this)
+        val pacienteData = jsonData.optJSONObject(nombrePaciente) ?: JSONObject()
+        pacienteData.put("estado_visita", estado)
+        jsonData.put(nombrePaciente, pacienteData)
+        JsonUtils.saveData(this, jsonData)
+    }
+
+    private fun cargarEstadoVisita(nombrePaciente: String): Int {
+        val jsonData = JsonUtils.loadData(this)
+        return jsonData.optJSONObject(nombrePaciente)?.optInt("estado_visita", VisitaPaciente.ESTADO_NO_INICIADA)
+            ?: VisitaPaciente.ESTADO_NO_INICIADA
     }
 
     private fun actualizarBotonVisita() {
@@ -160,21 +175,15 @@ class DetallePacienteActivity : AppCompatActivity() {
         }
     }
 
-    private fun cargarEstadoVisita(nombrePaciente: String): Int {
-        val prefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
-        // Primero intentamos cargar como Int (nuevo sistema)
-        if (prefs.contains("estado_visita_$nombrePaciente")) {
-            return prefs.getInt("estado_visita_$nombrePaciente", VisitaPaciente.ESTADO_NO_INICIADA)
+    private fun hayVisitaEnProgreso(): Boolean {
+        val jsonData = VisitaPaciente.JsonUtils.loadData(this)
+        for (key in jsonData.keys()) {
+            val visita = jsonData.getJSONObject(key)
+            if (visita.optInt("estado_visita", VisitaPaciente.ESTADO_NO_INICIADA) == VisitaPaciente.ESTADO_EN_PROGRESO) {
+                return true
+            }
         }
-
-        // Migración: si existe el antiguo booleano, lo convertimos
-        if (prefs.contains("visita_iniciada_$nombrePaciente")) {
-            val iniciada = prefs.getBoolean("visita_iniciada_$nombrePaciente", false)
-            val estado = if (iniciada) VisitaPaciente.ESTADO_EN_PROGRESO else VisitaPaciente.ESTADO_NO_INICIADA
-            guardarEstadoVisita(nombrePaciente, estado)
-            return estado
-        }
-        return VisitaPaciente.ESTADO_NO_INICIADA
+        return false
     }
 
     private fun mostrarDialogoCerrarSesion() {
@@ -189,7 +198,6 @@ class DetallePacienteActivity : AppCompatActivity() {
     }
 
     private fun cerrarSesion() {
-        // Redirigir a la pantalla de login
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
@@ -200,11 +208,10 @@ class DetallePacienteActivity : AppCompatActivity() {
         if (direccion.isNotEmpty()) {
             val uri = Uri.parse("geo:0,0?q=${Uri.encode(direccion)}")
             val intent = Intent(Intent.ACTION_VIEW, uri)
-            intent.setPackage("com.google.android.apps.maps") // Asegura que se abra en Google Maps
+            intent.setPackage("com.google.android.apps.maps")
             startActivity(intent)
         } else {
             Toast.makeText(this, "Dirección no disponible", Toast.LENGTH_SHORT).show()
         }
     }
 }
-

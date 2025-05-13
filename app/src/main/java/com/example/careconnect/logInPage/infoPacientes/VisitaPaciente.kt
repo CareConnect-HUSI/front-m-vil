@@ -4,7 +4,6 @@ import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -14,6 +13,8 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import org.json.JSONObject
+import java.io.File
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -35,19 +36,36 @@ class VisitaPaciente : AppCompatActivity() {
         const val ESTADO_COMPLETADA = 2
     }
 
+    object JsonUtils {
+
+        private const val FILE_NAME = "visitas_pacientes.json"
+
+        // Save data to JSON file
+        fun saveData(context: Context, data: JSONObject) {
+            val file = File(context.filesDir, FILE_NAME)
+            file.writeText(data.toString())
+        }
+
+        // Load data from JSON file
+        fun loadData(context: Context): JSONObject {
+            val file = File(context.filesDir, FILE_NAME)
+            return if (file.exists()) {
+                JSONObject(file.readText())
+            } else {
+                JSONObject() // Return an empty JSON object if the file doesn't exist
+            }
+        }
+    }
+
     private lateinit var listaInsumos: List<Insumo>
     private lateinit var adapter: InsumoAdapter
     private lateinit var recyclerView: RecyclerView
     private val botonGuardar: Button by lazy { findViewById(R.id.guardar_datos) }
-    private lateinit var searchInput: EditText
-    private lateinit var searchButton: ImageView
-    private lateinit var sharedPreferences: SharedPreferences
     private var estadoVisita: Int = ESTADO_NO_INICIADA
 
     override fun onPause() {
         super.onPause()
         if (estadoVisita == ESTADO_EN_PROGRESO) {
-            // Guardar automáticamente los datos actuales (sin marcar como completada)
             guardarDatosTemporales()
         }
     }
@@ -56,21 +74,32 @@ class VisitaPaciente : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_visita_paciente)
 
-        // Cargar SharedPreferences
-        sharedPreferences = getSharedPreferences("VisitaPacientePrefs", Context.MODE_PRIVATE)
-
         // Cargar estado de la visita
         estadoVisita = intent.getIntExtra("ESTADO_VISITA", ESTADO_NO_INICIADA)
 
         if (intent.getBooleanExtra("NUEVA_VISITA", false)) {
             estadoVisita = ESTADO_EN_PROGRESO
-            sharedPreferences.edit().putInt("estado_visita", estadoVisita).apply()
+        }
+
+        if (intent.getBooleanExtra("NUEVA_VISITA", false)) {
+            val horaLlegada = intent.getStringExtra("HORA_LLEGADA") ?: ""
+            val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
+
+            // Guardar temporalmente la hora de llegada en el JSON
+            val jsonData = JsonUtils.loadData(this)
+            val pacienteData = JSONObject().apply {
+                put("hora_llegada", horaLlegada)
+                put("estado_visita", ESTADO_EN_PROGRESO)
+            }
+            jsonData.put(nombrePaciente, pacienteData)
+            JsonUtils.saveData(this, jsonData)
+
+            findViewById<TextView>(R.id.hora_llegada_text).text = horaLlegada
         }
 
         // Obtener datos del intent
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
-        val horaLlegada = intent.getStringExtra("HORA_LLEGADA")
-            ?: sharedPreferences.getString("hora_llegada", "") ?: ""
+        val horaLlegada = intent.getStringExtra("HORA_LLEGADA") ?: ""
         val comentarios = intent.getStringExtra("COMENTARIOS_VISITA") ?: ""
 
         // Asignar datos a la interfaz
@@ -79,7 +108,6 @@ class VisitaPaciente : AppCompatActivity() {
 
         // Hora de llegada y salida
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)
-        val botonHoraSalida = findViewById<ImageView>(R.id.boton_reloj)
 
         // Obtener EditText desde el TextInputLayout
         val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
@@ -90,56 +118,40 @@ class VisitaPaciente : AppCompatActivity() {
         val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
 
         // Cargar datos guardados si existen
-        val comentariosGuardados = sharedPreferences.getString("comentarios", "")
-        val horaSalidaGuardada = sharedPreferences.getString("hora_salida", "")
-        checkBox1.isChecked = sharedPreferences.getBoolean("check_box_1", false)
-        checkBox2.isChecked = sharedPreferences.getBoolean("check_box_2", false)
-        val insumosGuardados = sharedPreferences.getString("insumos", "")
+        val jsonData = JsonUtils.loadData(this)
+        if (jsonData.has(nombrePaciente)) {
+            val pacienteData = jsonData.getJSONObject(nombrePaciente)
+            findViewById<TextView>(R.id.hora_llegada_text).text = pacienteData.optString("hora_llegada", "")
+            comentariosEditText?.setText(pacienteData.optString("comentarios", ""))
+            horaSalidaText.text = pacienteData.optString("hora_salida", "")
+            checkBox1.isChecked = pacienteData.optBoolean("check_box_1", false)
+            checkBox2.isChecked = pacienteData.optBoolean("check_box_2", false)
 
-        if (!comentariosGuardados.isNullOrEmpty()) {
-            comentariosEditText?.setText(comentariosGuardados)
+            val insumosJson = pacienteData.optString("insumos", "")
+            val mapaInsumos = insumosJson.split(";").mapNotNull {
+                val partes = it.split(":")
+                if (partes.size == 2) {
+                    val codigo = partes[0]
+                    val cantidad = partes[1].toIntOrNull() ?: 0
+                    codigo to cantidad
+                } else null
+            }.toMap()
+
+            listaInsumos = listOf(
+                Insumo("022", "Insumo Procedimiento #1", mapaInsumos["022"] ?: 0),
+                Insumo("045", "Insumo Procedimiento #2", mapaInsumos["045"] ?: 0)
+            )
+        } else {
+            listaInsumos = listOf(
+                Insumo("022", "Insumo Procedimiento #1", 0),
+                Insumo("045", "Insumo Procedimiento #2", 0)
+            )
         }
-        if (!horaSalidaGuardada.isNullOrEmpty()) {
-            horaSalidaText.text = horaSalidaGuardada
-        }
-
-        // Insumos
-        recyclerView = findViewById(R.id.listainsumos)
-        searchInput = findViewById(R.id.search_input)
-        searchButton = findViewById(R.id.search_button)
-
-        val mapaInsumos = insumosGuardados?.split(";")?.mapNotNull {
-            val partes = it.split(":")
-            if (partes.size == 2) {
-                val codigo = partes[0]
-                val cantidad = partes[1].toIntOrNull() ?: 0
-                codigo to cantidad
-            } else null
-        }?.toMap() ?: emptyMap()
-
-        listaInsumos = listOf(
-            Insumo("022", "Insumo Procedimiento #1", mapaInsumos["022"] ?: 0),
-            Insumo("045", "Insumo Procedimiento #2", mapaInsumos["045"] ?: 0)
-        )
 
         adapter = InsumoAdapter(listaInsumos.toMutableList())
+        recyclerView = findViewById(R.id.listainsumos)
         recyclerView.adapter = adapter
-        adapter.notifyDataSetChanged()
-
         recyclerView.layoutManager = LinearLayoutManager(this)
-
-        val insumosUsados = sharedPreferences.getString("insumos_usados", "")
-        if (!insumosUsados.isNullOrEmpty()) {
-            val mapaCantidades = insumosUsados.split(";").associate {
-                val (codigo, cantidad) = it.split(",")
-                codigo to cantidad.toInt()
-            }
-
-            listaInsumos = listaInsumos.map { insumo ->
-                insumo.copy(cantidad = mapaCantidades[insumo.codigo] ?: 0)
-            }
-            adapter.actualizarLista(listaInsumos)
-        }
 
         findViewById<ImageView>(R.id.btnBack).setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
@@ -149,57 +161,73 @@ class VisitaPaciente : AppCompatActivity() {
             mostrarDialogoCerrarSesion()
         }
 
-        botonHoraSalida.setOnClickListener {
-            mostrarTimePicker(horaSalidaText)
-        }
-
-        searchButton.setOnClickListener {
-            val query = searchInput.text.toString().trim()
-            filtrarInsumos(query)
-        }
-
-        searchInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                filtrarInsumos(s.toString())
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
-
         botonGuardar.setOnClickListener {
             mostrarDialogoGuardarDatos()
         }
 
         configurarInterfazSegunEstado()
-
     }
 
-    private fun filtrarInsumos(query: String) {
-        val listaFiltrada = listaInsumos.filter { it.nombre.contains(query, ignoreCase = true) }
-        adapter.actualizarLista(listaFiltrada)
-    }
+    private fun guardarDatosEnJson() {
+        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text).text.toString()
+        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
+        val comentariosTexto = comentariosLayout?.editText?.text?.toString() ?: ""
+        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
+        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
+        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
+        val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
 
-    private fun mostrarDialogoGuardarDatos() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Guardar Datos")
-        builder.setMessage("¿Desea guardar los datos?")
-        builder.setPositiveButton("Si") { _, _ ->
-            dialogConfirmacion()
+        val horaSalidaView = findViewById<TextView>(R.id.hora_salida_text)
+        var horaSalidaText = horaSalidaView.text.toString()
+
+        if (horaSalidaText.isBlank()) {
+            horaSalidaText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            horaSalidaView.text = horaSalidaText
         }
-        builder.setNegativeButton("No", null)
-        builder.show()
+
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
+
+        val jsonData = JsonUtils.loadData(this)
+        val pacienteData = JSONObject().apply {
+            put("hora_llegada", horaLlegadaText)
+            put("hora_salida", horaSalidaText)
+            put("comentarios", comentariosTexto)
+            put("check_box_1", checkBox1.isChecked)
+            put("check_box_2", checkBox2.isChecked)
+            put("insumos", insumosJson)
+            put("estado_visita", ESTADO_COMPLETADA)
+        }
+        jsonData.put(nombrePaciente, pacienteData)
+        JsonUtils.saveData(this, jsonData)
+
+        estadoVisita = ESTADO_COMPLETADA
+        configurarInterfazSegunEstado()
     }
 
-    private fun dialogConfirmacion() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Guardar Datos")
-        builder.setMessage("¿Está seguro de que desea guardar los datos? Los datos podrán ser editados más tarde.")
-        builder.setPositiveButton("Confirmar") { _, _ ->
-            guardarDatosEnSharedPreferences()
-            datosGuardados()
+    private fun guardarDatosTemporales() {
+        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text).text.toString()
+        val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text).text.toString()
+        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
+        val comentariosTexto = comentariosLayout?.editText?.text?.toString() ?: ""
+        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
+        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
+        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
+        val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
+
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: return
+
+        val jsonData = JsonUtils.loadData(this)
+        val pacienteData = JSONObject().apply {
+            put("hora_llegada", horaLlegadaText)
+            put("hora_salida", horaSalidaText)
+            put("comentarios", comentariosTexto)
+            put("check_box_1", checkBox1.isChecked)
+            put("check_box_2", checkBox2.isChecked)
+            put("insumos", insumosJson)
+            put("estado_visita", ESTADO_EN_PROGRESO)
         }
-        builder.setNegativeButton("No", null)
-        builder.show()
+        jsonData.put(nombrePaciente, pacienteData)
+        JsonUtils.saveData(this, jsonData)
     }
 
     private fun configurarInterfazSegunEstado() {
@@ -207,20 +235,17 @@ class VisitaPaciente : AppCompatActivity() {
         val comentariosEditText = comentariosLayout?.editText
         when (estadoVisita) {
             ESTADO_NO_INICIADA -> {
-                // Todos los campos editables
                 habilitarControles(true)
                 adapter.setEditable(true)
                 botonGuardar.text = "Guardar Visita"
             }
             ESTADO_EN_PROGRESO -> {
-                // Campos editables excepto hora de llegada
                 findViewById<TextView>(R.id.hora_llegada_text).isEnabled = false
                 habilitarControles(true)
                 adapter.setEditable(true)
                 botonGuardar.text = "Finalizar Visita"
             }
             ESTADO_COMPLETADA -> {
-                // Solo comentarios editables
                 habilitarControles(false)
                 adapter.setEditable(false)
                 comentariosEditText?.isEnabled = true
@@ -230,55 +255,38 @@ class VisitaPaciente : AppCompatActivity() {
     }
 
     private fun habilitarControles(habilitar: Boolean) {
-        findViewById<ImageView>(R.id.boton_reloj).isEnabled = habilitar
         findViewById<CheckBox>(R.id.checkBox1).isEnabled = habilitar
         findViewById<CheckBox>(R.id.checkBox2).isEnabled = habilitar
         findViewById<RecyclerView>(R.id.listainsumos).isEnabled = habilitar
         findViewById<EditText>(R.id.search_input).isEnabled = habilitar
         findViewById<ImageView>(R.id.search_button).isEnabled = habilitar
 
-        // Manejar el TextInputLayout de comentarios
         val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
         comentariosLayout?.isEnabled = habilitar
         comentariosLayout?.editText?.isEnabled = habilitar
     }
 
-    private fun guardarDatosEnSharedPreferences() {
-        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text).text.toString()
-        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
-        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
-        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
-        val insumosJson = insumosUsados.joinToString(";") {"${it.codigo}:${it.cantidad}"}
-        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        val comentariosTexto = comentariosLayout?.editText?.text?.toString() ?: ""
-
-        val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text).text.toString()
-        // Determinar el nuevo estado (si se establece hora de salida, es completada)
-        val nuevoEstado = if (horaSalidaText.isNotEmpty() && estadoVisita != ESTADO_COMPLETADA) {
-            ESTADO_COMPLETADA
-        } else {
-            estadoVisita
+    private fun mostrarDialogoGuardarDatos() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Guardar Datos")
+        builder.setMessage("¿Desea guardar los datos?")
+        builder.setPositiveButton("Si") { _, _ ->
+            dialogoConfirmacion()
         }
-        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
-        val detallePrefs = getSharedPreferences("DetallePacientePrefs", Context.MODE_PRIVATE)
+        builder.setNegativeButton("No", null)
+        builder.show()
+    }
 
-        with(detallePrefs.edit()) {
-            putInt("estado_visita_$nombrePaciente", nuevoEstado)
-            apply()
+    private fun dialogoConfirmacion() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Confirmacion Guardar Datos")
+        builder.setMessage("¿Esta seguro de que desea guardar los datos?, podra mofificar los comentarios despues")
+        builder.setPositiveButton("Confirmar") { _, _ ->
+            guardarDatosEnJson()
+            datosGuardados()
         }
-
-        val editor = sharedPreferences.edit()
-        editor.putString("comentarios", comentariosTexto)
-        editor.putString("hora_salida", horaSalidaText)
-        editor.putString("hora_llegada", horaLlegadaText)
-        editor.putBoolean("check_box_1", checkBox1.isChecked)
-        editor.putBoolean("check_box_2", checkBox2.isChecked)
-        editor.putString("insumos", insumosJson)
-        editor.putInt("estado_visita", nuevoEstado)
-        editor.apply()
-
-        estadoVisita = nuevoEstado
-        configurarInterfazSegunEstado()
+        builder.setNegativeButton("No", null)
+        builder.show()
     }
 
     private fun datosGuardados() {
@@ -286,31 +294,6 @@ class VisitaPaciente : AppCompatActivity() {
         Toast.makeText(this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show()
         startActivity(intent)
         finish()
-    }
-
-    private fun guardarDatosTemporales() {
-        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text).text.toString()
-        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
-        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
-        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
-        val insumosJson = insumosUsados.joinToString(";") {"${it.codigo}:${it.cantidad}"}
-        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        val comentariosEditText = comentariosLayout.editText
-        val comentariosTexto = comentariosEditText?.text.toString()
-
-        val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text).text.toString()
-        // Determinar el nuevo estado (si se establece hora de salida, es completada)
-        val nuevoEstado = if (horaSalidaText.isNotEmpty()) ESTADO_COMPLETADA else ESTADO_EN_PROGRESO
-
-        val editor = sharedPreferences.edit()
-        editor.putString("comentarios", comentariosTexto)
-        editor.putString("hora_salida", horaSalidaText)
-        editor.putString("hora_llegada", horaLlegadaText)
-        editor.putBoolean("check_box_1", checkBox1.isChecked)
-        editor.putBoolean("check_box_2", checkBox2.isChecked)
-        editor.putString("insumos", insumosJson)
-        editor.putInt("estado_visita", nuevoEstado)
-        editor.apply()
     }
 
     private fun mostrarDialogoCerrarSesion() {
@@ -329,17 +312,5 @@ class VisitaPaciente : AppCompatActivity() {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
-    }
-
-    private fun mostrarTimePicker(textView: TextView) {
-        val calendario = Calendar.getInstance()
-        val hora = calendario.get(Calendar.HOUR_OF_DAY)
-        val minuto = calendario.get(Calendar.MINUTE)
-
-        val timePicker = TimePickerDialog(this, { _, h, m ->
-            textView.text = String.format("%02d:%02d", h, m)
-        }, hora, minuto, true)
-
-        timePicker.show()
     }
 }

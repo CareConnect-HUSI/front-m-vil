@@ -110,17 +110,6 @@
                     android:text="00:00"
                     android:textSize="16sp"
                     android:layout_marginStart="@dimen/margin_small"/>
-
-                <ImageView
-                    android:id="@+id/boton_reloj"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:layout_gravity="center_vertical"
-                    android:padding="@dimen/margin_xsmall"
-                    android:layout_marginStart="@dimen/margin_small"
-                    android:src="@drawable/image_clock"
-                    android:clickable="true"
-                    android:focusable="true"/>
             </LinearLayout>
         </LinearLayout>
 
