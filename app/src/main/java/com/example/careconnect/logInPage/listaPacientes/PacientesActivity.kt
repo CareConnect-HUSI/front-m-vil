@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
 import com.example.careconnect.logInPage.LoginActivity
+import com.example.careconnect.logInPage.infoPacientes.DetallePacienteActivity
 
 class PacientesActivity : AppCompatActivity() {
 
@@ -47,9 +48,9 @@ class PacientesActivity : AppCompatActivity() {
 
         // Lista de pacientes de prueba
         val pacientes = listOf(
-            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá", obtenerEstado("Juan Pérez", sharedPrefs)),
-            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá", obtenerEstado("María Gómez", sharedPrefs)),
-            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca", obtenerEstado("Carlos López", sharedPrefs))
+            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá", obtenerEstado("Juan Pérez")),
+            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá", obtenerEstado("María Gómez")),
+            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca", obtenerEstado("Carlos López"))
         )
 
         // Configurar adaptador
@@ -57,8 +58,10 @@ class PacientesActivity : AppCompatActivity() {
         recyclerView.adapter = adapter
     }
 
-    private fun obtenerEstado(nombre: String, prefs: android.content.SharedPreferences): String {
-        return when (prefs.getInt("estado_visita_$nombre", 0)) {
+    private fun obtenerEstado(nombre: String): String {
+        val jsonData = DetallePacienteActivity.JsonUtils.loadData(this)
+        val estado = jsonData.optJSONObject(nombre)?.optInt("estado_visita", 0) ?: 0
+        return when (estado) {
             0 -> "NO_INICIADA"
             1 -> "EN_PROCESO"
             2 -> "FINALIZADA"
@@ -73,9 +76,9 @@ class PacientesActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("DetallePacientePrefs", MODE_PRIVATE)
 
         val pacientes = listOf(
-            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Cra. 68b #24-39, Bogotá", obtenerEstado("Juan Pérez", prefs)),
-            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá", obtenerEstado("María Gómez", prefs)),
-            Paciente("Carlos López", "60", "Asma", "10:15", "Cra. 3 #2-49, El Colegio, Mesitas del Colegio, Cundinamarca", obtenerEstado("Carlos López", prefs))
+            Paciente("Juan Pérez", "45", "Hipertensión", "08:30", "Ak 7 #40 - 62, Bogotá", obtenerEstado("Juan Pérez")),
+            Paciente("María Gómez", "50", "Diabetes", "09:00", "Ak 7 #40 - 62, Bogotá", obtenerEstado("María Gómez")),
+            Paciente("Carlos López", "60", "Asma", "10:15", "Ak 7 #40 - 62, Bogotá", obtenerEstado("Carlos López"))
         )
 
         recyclerView.adapter = PacienteAdapter(this, pacientes)
