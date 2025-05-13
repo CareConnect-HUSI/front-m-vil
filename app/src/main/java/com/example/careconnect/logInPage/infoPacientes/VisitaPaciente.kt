@@ -1,12 +1,9 @@
 package com.example.careconnect.logInPage.infoPacientes
 
 import android.app.AlertDialog
-import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -24,7 +21,6 @@ import com.example.careconnect.logInPage.listaPacientes.PacientesActivity
 import com.example.careconnect.logInPage.registrarInsumos.Insumo
 import com.example.careconnect.logInPage.registrarInsumos.InsumoAdapter
 import com.google.android.material.textfield.TextInputLayout
-import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.*
 
