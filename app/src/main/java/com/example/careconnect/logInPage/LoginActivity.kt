@@ -13,9 +13,14 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.careconnect.R
 import com.example.careconnect.logInPage.listaPacientes.PacientesActivity
+import com.example.careconnect.logInPage.usuario.Usuario.RetrofitClient
+import com.example.careconnect.logInPage.usuario.Usuario.Usuario
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import com.google.android.material.textfield.TextInputEditText
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class LoginActivity : AppCompatActivity() {
 
@@ -86,11 +91,27 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun continuarAlInicio() {
-        Toast.makeText(this, "Iniciando sesión...", Toast.LENGTH_SHORT).show()
-        val intent = Intent(this, PacientesActivity::class.java)
-        intent.putExtra("NOMBRE_ENFERMERA", "Enfermera")
-        startActivity(intent)
-        finish()
+        val call = RetrofitClient.instance.getUser()
+
+        call. enqueue(object : Callback<Usuario> {
+            override fun onResponse(call: Call<Usuario>, response: Response<Usuario>) {
+                if (response.isSuccessful) {
+                    val user = response.body()
+                    Toast.makeText(this@LoginActivity, "Hola ${user?.name}", Toast.LENGTH_SHORT).show()
+
+                    val intent = Intent(this@LoginActivity, PacientesActivity::class.java)
+                    intent.putExtra("NOMBRE_ENFERMERA", user?.name ?: "Enfermera")
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Toast.makeText(this@LoginActivity, "Error en la respuesta de la API", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<Usuario>, t: Throwable) {
+                Toast.makeText(this@LoginActivity, "Error: ${t.message}", Toast.LENGTH_LONG).show()
+            }
+        })
     }
 
     override fun onRequestPermissionsResult(
