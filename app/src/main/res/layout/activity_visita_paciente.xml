@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:fillViewport="true"
     android:background="@color/white"
-    tools:context=".logInPage.infoPacientes.VisitaPaciente">
+    tools:context=".main.visitaPaciente.VisitaPaciente">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"

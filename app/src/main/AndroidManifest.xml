@@ -18,7 +18,7 @@
         android:theme="@style/Theme.CareConnect"
         tools:targetApi="31">
         <activity
-            android:name=".logInPage.LoginActivity"
+            android:name=".main.inicioSesion.LoginActivity"
 
             android:exported="true">
             <intent-filter>
@@ -28,13 +28,13 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".logInPage.listaPacientes.PacientesActivity"
+        <activity android:name=".main.listaPacientes.PacientesActivity"
             android:exported="true"/>
 
-        <activity android:name=".logInPage.infoPacientes.DetallePacienteActivity"
+        <activity android:name=".main.infoPacientes.DetallePacienteActivity"
             android:exported="true"/>
 
-        <activity android:name=".logInPage.infoPacientes.VisitaPaciente"
+        <activity android:name=".main.visitaPaciente.VisitaPaciente"
             android:exported="true"/>
     </application>
 

@@ -1,4 +1,4 @@
-package com.example.careconnect.logInPage.infoPacientes
+package com.example.careconnect.main.infoPacientes
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -12,7 +12,8 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.careconnect.R
-import com.example.careconnect.logInPage.LoginActivity
+import com.example.careconnect.main.inicioSesion.LoginActivity
+import com.example.careconnect.main.visitaPaciente.VisitaPaciente
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import org.json.JSONObject

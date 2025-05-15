@@ -1,4 +1,4 @@
-package com.example.careconnect.logInPage
+package com.example.careconnect.main.inicioSesion
 
 import android.Manifest
 import android.content.Intent
@@ -12,9 +12,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.careconnect.R
-import com.example.careconnect.logInPage.listaPacientes.PacientesActivity
-import com.example.careconnect.logInPage.usuario.Usuario.RetrofitClient
-import com.example.careconnect.logInPage.usuario.Usuario.Usuario
+import com.example.careconnect.main.dataUsuarios.Enfermera
+import com.example.careconnect.main.listaPacientes.PacientesActivity
+import com.example.careconnect.main.retroFit.RetrofitClient
+import com.example.careconnect.main.retroFit.Credenciales
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import com.google.android.material.textfield.TextInputEditText
@@ -91,25 +92,30 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun continuarAlInicio() {
-        val call = RetrofitClient.instance.getUser()
+        val email = findViewById<TextInputEditText>(R.id.email_edit_text).text.toString()
+        val password = findViewById<TextInputEditText>(R.id.password_edit_text).text.toString()
 
-        call. enqueue(object : Callback<Usuario> {
-            override fun onResponse(call: Call<Usuario>, response: Response<Usuario>) {
+        val credenciales = Credenciales(email = email, password = password)
+
+        val call = RetrofitClient.instance.login(credenciales)
+
+        call.enqueue(object : Callback<LoginResponse> {
+            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 if (response.isSuccessful) {
                     val user = response.body()
-                    Toast.makeText(this@LoginActivity, "Hola ${user?.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@LoginActivity, "Bienvenida ${user?.nombre}", Toast.LENGTH_SHORT).show()
 
                     val intent = Intent(this@LoginActivity, PacientesActivity::class.java)
-                    intent.putExtra("NOMBRE_ENFERMERA", user?.name ?: "Enfermera")
+                    intent.putExtra("NOMBRE_ENFERMERA", user?.nombre ?: "Enfermera")
                     startActivity(intent)
                     finish()
                 } else {
-                    Toast.makeText(this@LoginActivity, "Error en la respuesta de la API", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@LoginActivity, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<Usuario>, t: Throwable) {
-                Toast.makeText(this@LoginActivity, "Error: ${t.message}", Toast.LENGTH_LONG).show()
+            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                Toast.makeText(this@LoginActivity, "Error de red: ${t.message}", Toast.LENGTH_LONG).show()
             }
         })
     }

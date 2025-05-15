@@ -1,4 +1,4 @@
-package com.example.careconnect.logInPage.listaPacientes
+package com.example.careconnect.main.listaPacientes
 
 import android.app.AlertDialog
 import android.content.Intent
@@ -9,8 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
-import com.example.careconnect.logInPage.LoginActivity
-import com.example.careconnect.logInPage.infoPacientes.DetallePacienteActivity
+import com.example.careconnect.main.inicioSesion.LoginActivity
+import com.example.careconnect.main.infoPacientes.DetallePacienteActivity
 
 class PacientesActivity : AppCompatActivity() {
 

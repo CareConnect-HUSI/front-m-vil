@@ -1,4 +1,4 @@
-package com.example.careconnect.logInPage.registrarInsumos
+package com.example.careconnect.main.registrarInsumos
 
 data class Insumo(
     val codigo: String,

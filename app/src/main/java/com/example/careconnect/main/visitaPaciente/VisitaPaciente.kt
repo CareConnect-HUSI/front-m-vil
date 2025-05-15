@@ -1,4 +1,4 @@
-package com.example.careconnect.logInPage.infoPacientes
+package com.example.careconnect.main.visitaPaciente
 
 import android.app.AlertDialog
 import android.content.Context
@@ -16,10 +16,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
-import com.example.careconnect.logInPage.LoginActivity
-import com.example.careconnect.logInPage.listaPacientes.PacientesActivity
-import com.example.careconnect.logInPage.registrarInsumos.Insumo
-import com.example.careconnect.logInPage.registrarInsumos.InsumoAdapter
+import com.example.careconnect.main.inicioSesion.LoginActivity
+import com.example.careconnect.main.listaPacientes.PacientesActivity
+import com.example.careconnect.main.registrarInsumos.Insumo
+import com.example.careconnect.main.registrarInsumos.InsumoAdapter
 import com.google.android.material.textfield.TextInputLayout
 import java.text.SimpleDateFormat
 import java.util.*
