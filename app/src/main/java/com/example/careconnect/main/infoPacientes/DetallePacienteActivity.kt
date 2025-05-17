@@ -109,7 +109,7 @@ class DetallePacienteActivity : AppCompatActivity() {
 
                         val distancia = calcularDistancia(latUsuario, lonUsuario, latPaciente, lonPaciente)
 
-                        if (distancia <= 100.0) {
+                        if (distancia <= 500.0) {
                             val intent = Intent(this, VisitaPaciente::class.java)
                             intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)
 

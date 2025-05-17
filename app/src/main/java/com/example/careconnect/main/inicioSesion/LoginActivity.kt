@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.careconnect.R
-import com.example.careconnect.main.dataUsuarios.Enfermera
 import com.example.careconnect.main.listaPacientes.PacientesActivity
 import com.example.careconnect.main.retroFit.RetrofitClient
 import com.example.careconnect.main.retroFit.Credenciales
@@ -28,18 +27,24 @@ class LoginActivity : AppCompatActivity() {
     private val PERMISO_UBICACION = 1000
     private val SOLICITUD_ENCENDER_GPS = 1001
 
+    private lateinit var emailInput: TextInputEditText
+    private lateinit var passwordInput: TextInputEditText
+
+    private var email = ""
+    private var password = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
-        val emailInput = findViewById<TextInputEditText>(R.id.email_edit_text)
-        val passwordInput = findViewById<TextInputEditText>(R.id.password_edit_text)
+        emailInput = findViewById(R.id.email_edit_text)
+        passwordInput = findViewById(R.id.password_edit_text)
         val loginButton = findViewById<Button>(R.id.login_button)
         val forgotPassword = findViewById<TextView>(R.id.forgot_password)
 
         loginButton.setOnClickListener {
-            val email = emailInput.text.toString()
-            val password = passwordInput.text.toString()
+            email = emailInput.text.toString().trim()
+            password = passwordInput.text.toString().trim()
 
             if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Por favor ingresa todos los datos", Toast.LENGTH_SHORT).show()
@@ -75,7 +80,7 @@ class LoginActivity : AppCompatActivity() {
 
         task.addOnSuccessListener {
             // GPS ya está encendido
-            continuarAlInicio()
+            iniciarSesion()
         }
 
         task.addOnFailureListener { exception ->
@@ -91,10 +96,7 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun continuarAlInicio() {
-        val email = findViewById<TextInputEditText>(R.id.email_edit_text).text.toString()
-        val password = findViewById<TextInputEditText>(R.id.password_edit_text).text.toString()
-
+    private fun iniciarSesion() {
         val credenciales = Credenciales(email = email, password = password)
 
         val call = RetrofitClient.instance.login(credenciales)
@@ -103,6 +105,11 @@ class LoginActivity : AppCompatActivity() {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 if (response.isSuccessful) {
                     val user = response.body()
+
+                    // Guardar JWT en SharedPreferences
+                    val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+                    prefs.edit().putString("JWT_TOKEN", user?.token).apply()
+
                     Toast.makeText(this@LoginActivity, "Bienvenida ${user?.nombre}", Toast.LENGTH_SHORT).show()
 
                     val intent = Intent(this@LoginActivity, PacientesActivity::class.java)

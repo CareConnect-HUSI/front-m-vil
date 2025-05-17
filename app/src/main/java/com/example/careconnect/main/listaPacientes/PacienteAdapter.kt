@@ -10,16 +10,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
+import com.example.careconnect.main.dataUsuarios.Paciente
 import com.example.careconnect.main.infoPacientes.DetallePacienteActivity
-
-data class Paciente(
-    val nombre: String,
-    val edad: String,
-    val diagnostico: String,
-    val hora: String,
-    val direccion: String,
-    val estadoVisita: String
-)
 
 class PacienteAdapter(private val context: Context, private val pacientes: List<Paciente>) :
     RecyclerView.Adapter<PacienteAdapter.ViewHolder>() {
@@ -49,8 +41,6 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.botonDetallePaciente.setOnClickListener {
             val intent = Intent(context, DetallePacienteActivity::class.java)
             intent.putExtra("NOMBRE_PACIENTE", paciente.nombre)
-            intent.putExtra("EDAD_PACIENTE", paciente.edad)
-            intent.putExtra("DIAGNOSTICO_PACIENTE", paciente.diagnostico)
             intent.putExtra("DIRECCION_PACIENTE", paciente.direccion)
             context.startActivity(intent)
         }
