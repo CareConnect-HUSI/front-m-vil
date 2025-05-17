@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -12,7 +13,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.careconnect.R
-import com.example.careconnect.main.dataUsuarios.Enfermera
 import com.example.careconnect.main.listaPacientes.PacientesActivity
 import com.example.careconnect.main.retroFit.RetrofitClient
 import com.example.careconnect.main.retroFit.Credenciales
@@ -103,19 +103,39 @@ class LoginActivity : AppCompatActivity() {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 if (response.isSuccessful) {
                     val user = response.body()
-                    Toast.makeText(this@LoginActivity, "Bienvenida ${user?.nombre}", Toast.LENGTH_SHORT).show()
+                    if (user != null && !user.token.isNullOrBlank()) {
+                        // Guardar el token en SharedPreferences
+                        val sharedPreferences = getSharedPreferences("auth_prefs", MODE_PRIVATE)
+                        with(sharedPreferences.edit()) {
+                            putString("auth_token", user.token)
+                            apply()
+                        }
+                        Log.d("LoginActivity", "Saved token: ${user.token}")
 
-                    val intent = Intent(this@LoginActivity, PacientesActivity::class.java)
-                    intent.putExtra("NOMBRE_ENFERMERA", user?.nombre ?: "Enfermera")
-                    startActivity(intent)
-                    finish()
+                        Toast.makeText(this@LoginActivity, "Bienvenida ${user.nombre}", Toast.LENGTH_SHORT).show()
+
+                        val intent = Intent(this@LoginActivity, PacientesActivity::class.java)
+                        intent.putExtra("NOMBRE_ENFERMERA", user.nombre)
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        Toast.makeText(this@LoginActivity, "Error: Token no recibido", Toast.LENGTH_SHORT).show()
+                        Log.e("LoginActivity", "User or token is null: $user")
+                    }
                 } else {
-                    Toast.makeText(this@LoginActivity, "Credenciales incorrectas", Toast.LENGTH_SHORT).show()
+                    val errorMsg = when (response.code()) {
+                        401 -> "Credenciales incorrectas"
+                        500 -> "Error del servidor. Intenta de nuevo más tarde."
+                        else -> "Error en el inicio de sesión: ${response.code()}"
+                    }
+                    Toast.makeText(this@LoginActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Log.e("LoginActivity", "Error response: ${response.code()} - ${response.message()}")
                 }
             }
 
             override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
                 Toast.makeText(this@LoginActivity, "Error de red: ${t.message}", Toast.LENGTH_LONG).show()
+                Log.e("LoginActivity", "Network error: ${t.message}", t)
             }
         })
     }
@@ -136,7 +156,7 @@ class LoginActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == SOLICITUD_ENCENDER_GPS) {
-            verificarGPS() // Verificamos de nuevo si el usuario activó el GPS
+            verificarGPS()
         }
     }
 }

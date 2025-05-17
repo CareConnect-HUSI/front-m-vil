@@ -14,7 +14,6 @@ import com.example.careconnect.main.infoPacientes.DetallePacienteActivity
 
 data class Paciente(
     val nombre: String,
-    val edad: String,
     val diagnostico: String,
     val hora: String,
     val direccion: String,
@@ -49,7 +48,6 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.botonDetallePaciente.setOnClickListener {
             val intent = Intent(context, DetallePacienteActivity::class.java)
             intent.putExtra("NOMBRE_PACIENTE", paciente.nombre)
-            intent.putExtra("EDAD_PACIENTE", paciente.edad)
             intent.putExtra("DIAGNOSTICO_PACIENTE", paciente.diagnostico)
             intent.putExtra("DIRECCION_PACIENTE", paciente.direccion)
             context.startActivity(intent)
@@ -64,7 +62,7 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.iconoNoIniciada.visibility = View.GONE
 
         when (estado) {
-            "NO_INICIADA" -> holder.iconoNoIniciada.visibility = View.VISIBLE
+            "PROGRAMADA" -> holder.iconoNoIniciada.visibility = View.VISIBLE
             "EN_PROCESO" -> holder.iconoEspera.visibility = View.VISIBLE
             "FINALIZADA" -> holder.iconoCompletado.visibility = View.VISIBLE
         }
