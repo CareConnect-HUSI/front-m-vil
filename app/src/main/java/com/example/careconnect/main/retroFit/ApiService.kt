@@ -4,6 +4,7 @@ import com.example.careconnect.main.dataUsuarios.Paciente
 import com.example.careconnect.main.registrarProcedimientos.Procedimiento
 import com.example.careconnect.main.registrarInsumos.Insumo
 import com.example.careconnect.main.inicioSesion.LoginResponse
+import com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest
 import com.example.careconnect.main.visitaPaciente.HorasVisitaRequest
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -12,6 +13,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.Response
 
 interface ApiService {
     @POST("/login")
@@ -36,10 +38,20 @@ interface ApiService {
     @GET("visita/{visitaId}/insumos")
     fun getInsumosPorVisita(@Path("visitaId") visitaId: Int): Call<List<Insumo>>
 
+    @POST("visita/{visita_id}/insumos/consumidos")
+    fun registrarInsumosConsumidos(
+        @Path("visita_id") visitaId: Int,
+        @Body insumos: List<InsumoConsumidoRequest>
+    ): Call<ResponseBody>
 }
 
 data class Credenciales(
     val email: String,
     val password: String
+)
+
+data class ApiResponse(
+    val success: Boolean,
+    val message: String
 )
 

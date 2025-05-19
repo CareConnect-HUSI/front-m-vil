@@ -224,6 +224,33 @@ class VisitaPaciente : AppCompatActivity() {
 
         estadoVisita = ESTADO_COMPLETADA
         configurarInterfazSegunEstado()
+
+        val insumosParaEnviar = insumosUsados.map {
+            com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest(it.codigo, it.cantidad)
+        }
+
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null)
+
+        if (token != null && visitaId != -1) {
+            val api = com.example.careconnect.main.retroFit.RetrofitClient.getInstance(token)
+            api.registrarInsumosConsumidos(visitaId, insumosParaEnviar)
+                .enqueue(object : retrofit2.Callback<okhttp3.ResponseBody> {
+                    override fun onResponse(call: retrofit2.Call<okhttp3.ResponseBody>, response: retrofit2.Response<okhttp3.ResponseBody>) {
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@VisitaPaciente, "Insumos registrados correctamente", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@VisitaPaciente, "Error al registrar insumos (${response.code()})", Toast.LENGTH_LONG).show()
+                            android.util.Log.e("INSUMOS_API", "Error al registrar insumos: ${response.errorBody()?.string()}")
+                        }
+                    }
+
+                    override fun onFailure(call: retrofit2.Call<okhttp3.ResponseBody>, t: Throwable) {
+                        Toast.makeText(this@VisitaPaciente, "Fallo de red al enviar insumos", Toast.LENGTH_LONG).show()
+                        android.util.Log.e("INSUMOS_API", "Fallo de red al registrar insumos", t)
+                    }
+                })
+        }
     }
 
     private fun guardarDatosTemporales() {
