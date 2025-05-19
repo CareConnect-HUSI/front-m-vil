@@ -34,8 +34,8 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val insumo = insumos[position]
-        holder.codigo.text = insumo.codigo
-        holder.nombre.text = insumo.nombre
+        holder.codigo.text = insumo.codigo.toString()
+        holder.nombre.text = insumo.insumo
         holder.cantidadText.text = insumo.cantidad.toString()
 
         holder.buttonIncrease.isEnabled = editable

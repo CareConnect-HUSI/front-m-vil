@@ -20,6 +20,7 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         val nombrePaciente: TextView = view.findViewById(R.id.nombre_paciente)
         val horaAtencion: TextView = view.findViewById(R.id.hora_atencion)
         val direccion: TextView = view.findViewById(R.id.direccion_paciente)
+        val telefono: TextView = view.findViewById(R.id.telefono_paciente)
         val botonDetallePaciente: LinearLayout = view.findViewById(R.id.boton_detalle_paciente)
         val iconoCompletado: ImageView = view.findViewById(R.id.icono_estado_visita_completada)
         val iconoEspera: ImageView = view.findViewById(R.id.icono_estado_visita_espera)
@@ -37,14 +38,23 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.nombrePaciente.text = paciente.nombre
         holder.horaAtencion.text = "Hora: ${paciente.hora}"
         holder.direccion.text = "Dirección: ${paciente.direccion}"
+        holder.telefono.text = "Teléfono: ${paciente.telefono}"
 
         holder.botonDetallePaciente.setOnClickListener {
             val intent = Intent(context, DetallePacienteActivity::class.java)
             intent.putExtra("NOMBRE_PACIENTE", paciente.nombre)
             intent.putExtra("DIRECCION_PACIENTE", paciente.direccion)
+            intent.putExtra("TELEFONO_PACIENTE", paciente.telefono)
+            intent.putExtra("VISITA_ID", paciente.visitaId)
+            intent.putExtra("ESTADO_VISITA", when (paciente.estadoVisita) {
+                "NO_INICIADA" -> 0
+                "EN_PROCESO" -> 1
+                "FINALIZADA" -> 2
+                else -> 0
+            })
+            intent.putExtra("NUEVA_VISITA", paciente.estadoVisita == "NO_INICIADA")
             context.startActivity(intent)
         }
-
         mostrarEstado(holder, paciente.estadoVisita)
     }
 

@@ -99,7 +99,7 @@ class LoginActivity : AppCompatActivity() {
     private fun iniciarSesion() {
         val credenciales = Credenciales(email = email, password = password)
 
-        val call = RetrofitClient.instance.login(credenciales)
+        val call = RetrofitClient.noAuth.login(credenciales)
 
         call.enqueue(object : Callback<LoginResponse> {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {

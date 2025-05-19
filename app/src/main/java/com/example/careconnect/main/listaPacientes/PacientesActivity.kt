@@ -3,6 +3,7 @@ package com.example.careconnect.main.listaPacientes
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -71,8 +72,10 @@ class PacientesActivity : AppCompatActivity() {
     private fun cargarListaPacientes() {
         lifecycleScope.launch {
             try {
-                val response = RetrofitClient.instance.getPacientesAsignados("Bearer $jwtToken")
-                recyclerView.adapter = PacienteAdapter(this@PacientesActivity, response)
+                val api = RetrofitClient.getInstance(jwtToken)
+                val pacientes = api.getPacientesAsignados("Bearer $jwtToken")
+                Log.d("DEBUG_PACIENTES", pacientes.joinToString("\n"))
+                recyclerView.adapter = PacienteAdapter(this@PacientesActivity, pacientes)
             } catch (e: Exception) {
                 e.printStackTrace()
                 Toast.makeText(this@PacientesActivity, "Error al cargar pacientes", Toast.LENGTH_LONG).show()

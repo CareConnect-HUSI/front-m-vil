@@ -8,6 +8,7 @@ import android.content.Intent
 import android.location.Geocoder
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -58,9 +59,19 @@ class DetallePacienteActivity : AppCompatActivity() {
 
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
         val direccionPaciente = intent.getStringExtra("DIRECCION_PACIENTE") ?: ""
+        val telefonoPaciente = intent.getStringExtra("TELEFONO_PACIENTE") ?: ""
+        val visitaId = intent.getIntExtra("VISITA_ID", -1)
+        if (visitaId == -1){
+            Log.e("DEBUG_VISITA", "visitaId invalido recibido")
+        }
         val botonVisita = findViewById<Button>(R.id.iniciarVisita)
 
         findViewById<TextView>(R.id.detalle_nombre_paciente).text = nombrePaciente
+
+        val direccionTextView = findViewById<TextView>(R.id.direccion_paciente)
+        val telefonoTextView = findViewById<TextView>(R.id.telefono_paciente)
+        direccionTextView.text = direccionPaciente
+        telefonoTextView.text = telefonoPaciente
 
         findViewById<ImageView>(R.id.btnBack).setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
@@ -75,11 +86,11 @@ class DetallePacienteActivity : AppCompatActivity() {
         }
 
         botonVisita.setOnClickListener {
-            verificarUbicacionYRegistrarHora(nombrePaciente, direccionPaciente, botonVisita)
+            verificarUbicacionYRegistrarHora(visitaId, nombrePaciente, direccionPaciente, telefonoPaciente, botonVisita)
         }
     }
 
-    private fun verificarUbicacionYRegistrarHora(nombrePaciente: String, direccionPaciente: String, botonVisita: Button) {
+    private fun verificarUbicacionYRegistrarHora(visitaId: Int, nombrePaciente: String, direccionPaciente: String, telefonoPaciente: String, botonVisita: Button) {
         val hayOtraVisitaEnProgreso = verificarOtraVisitaEnProgreso(nombrePaciente)
         val estadoActual = cargarEstadoVisita(nombrePaciente)
 
@@ -112,6 +123,7 @@ class DetallePacienteActivity : AppCompatActivity() {
                         if (distancia <= 500.0) {
                             val intent = Intent(this, VisitaPaciente::class.java)
                             intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)
+                            intent.putExtra("VISITA_ID", visitaId) // <-- Make sure visitaId is valid
 
                             val estadoActual = cargarEstadoVisita(nombrePaciente)
 
@@ -146,6 +158,7 @@ class DetallePacienteActivity : AppCompatActivity() {
         val loc1 = Location("").apply {
             latitude = lat1
             longitude = lon1
+
         }
         val loc2 = Location("").apply {
             latitude = lat2

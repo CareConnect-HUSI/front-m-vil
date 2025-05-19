@@ -4,25 +4,28 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
-import org.json.JSONObject
-import java.io.File
+import android.util.Log
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.careconnect.R
+import com.example.careconnect.main.adapters.ProcedimientoAdapter
 import com.example.careconnect.main.inicioSesion.LoginActivity
-import com.example.careconnect.main.listaPacientes.PacientesActivity
 import com.example.careconnect.main.registrarInsumos.Insumo
 import com.example.careconnect.main.registrarInsumos.InsumoAdapter
+import com.example.careconnect.main.registrarProcedimientos.Procedimiento
+import com.example.careconnect.main.retroFit.RetrofitClient
 import com.google.android.material.textfield.TextInputLayout
+import okhttp3.ResponseBody
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import org.json.JSONArray
+import org.json.JSONObject
 
 class VisitaPaciente : AppCompatActivity() {
 
@@ -33,31 +36,26 @@ class VisitaPaciente : AppCompatActivity() {
     }
 
     object JsonUtils {
-
         private const val FILE_NAME = "visitas_pacientes.json"
 
-        // Save data to JSON file
         fun saveData(context: Context, data: JSONObject) {
             val file = File(context.filesDir, FILE_NAME)
             file.writeText(data.toString())
         }
 
-        // Load data from JSON file
         fun loadData(context: Context): JSONObject {
             val file = File(context.filesDir, FILE_NAME)
-            return if (file.exists()) {
-                JSONObject(file.readText())
-            } else {
-                JSONObject() // Return an empty JSON object if the file doesn't exist
-            }
+            return if (file.exists()) JSONObject(file.readText()) else JSONObject()
         }
     }
 
-    private lateinit var listaInsumos: List<Insumo>
+    private lateinit var recyclerProcedimientos: RecyclerView
+    private lateinit var procedimientoAdapter: ProcedimientoAdapter
     private lateinit var adapter: InsumoAdapter
     private lateinit var recyclerView: RecyclerView
     private val botonGuardar: Button by lazy { findViewById(R.id.guardar_datos) }
     private var estadoVisita: Int = ESTADO_NO_INICIADA
+    private var visitaId: Int = -1
 
     override fun onPause() {
         super.onPause()
@@ -70,18 +68,21 @@ class VisitaPaciente : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_visita_paciente)
 
-        // Cargar estado de la visita
+        recyclerProcedimientos = findViewById(R.id.recycler_procedimientos)
+        recyclerProcedimientos.layoutManager = LinearLayoutManager(this)
+
+        procedimientoAdapter = ProcedimientoAdapter(emptyList())
+        recyclerProcedimientos.adapter = procedimientoAdapter
+
         estadoVisita = intent.getIntExtra("ESTADO_VISITA", ESTADO_NO_INICIADA)
+        visitaId = intent.getIntExtra("VISITA_ID", -1)
+
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
+        findViewById<TextView>(R.id.detalle_nombre_paciente)?.text = nombrePaciente
 
         if (intent.getBooleanExtra("NUEVA_VISITA", false)) {
             estadoVisita = ESTADO_EN_PROGRESO
-        }
-
-        if (intent.getBooleanExtra("NUEVA_VISITA", false)) {
-            val horaLlegada = intent.getStringExtra("HORA_LLEGADA") ?: ""
-            val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
-
-            // Guardar temporalmente la hora de llegada en el JSON
+            val horaLlegada = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
             val jsonData = JsonUtils.loadData(this)
             val pacienteData = JSONObject().apply {
                 put("hora_llegada", horaLlegada)
@@ -89,107 +90,132 @@ class VisitaPaciente : AppCompatActivity() {
             }
             jsonData.put(nombrePaciente, pacienteData)
             JsonUtils.saveData(this, jsonData)
-
-            findViewById<TextView>(R.id.hora_llegada_text).text = horaLlegada
+            findViewById<TextView>(R.id.hora_llegada_text)?.text = horaLlegada
         }
 
-        // Obtener datos del intent
-        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
-        val horaLlegada = intent.getStringExtra("HORA_LLEGADA") ?: ""
         val comentarios = intent.getStringExtra("COMENTARIOS_VISITA") ?: ""
+        findViewById<TextInputLayout>(R.id.comentarios)?.editText?.setText(comentarios)
 
-        // Asignar datos a la interfaz
-        findViewById<TextView>(R.id.detalle_nombre_paciente).text = nombrePaciente
-        findViewById<TextView>(R.id.hora_llegada_text).text = horaLlegada
-
-        // Hora de llegada y salida
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)
 
-        // Obtener EditText desde el TextInputLayout
-        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        val comentariosEditText = comentariosLayout.editText
-        comentariosEditText?.setText(comentarios)
-
-        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
-        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
-
-        // Cargar datos guardados si existen
         val jsonData = JsonUtils.loadData(this)
-        if (jsonData.has(nombrePaciente)) {
-            val pacienteData = jsonData.getJSONObject(nombrePaciente)
-            findViewById<TextView>(R.id.hora_llegada_text).text = pacienteData.optString("hora_llegada", "")
-            comentariosEditText?.setText(pacienteData.optString("comentarios", ""))
-            horaSalidaText.text = pacienteData.optString("hora_salida", "")
-            checkBox1.isChecked = pacienteData.optBoolean("check_box_1", false)
-            checkBox2.isChecked = pacienteData.optBoolean("check_box_2", false)
 
-            val insumosJson = pacienteData.optString("insumos", "")
-            val mapaInsumos = insumosJson.split(";").mapNotNull {
-                val partes = it.split(":")
-                if (partes.size == 2) {
-                    val codigo = partes[0]
-                    val cantidad = partes[1].toIntOrNull() ?: 0
-                    codigo to cantidad
-                } else null
-            }.toMap()
-
-            listaInsumos = listOf(
-                Insumo("022", "Insumo Procedimiento #1", mapaInsumos["022"] ?: 0),
-                Insumo("045", "Insumo Procedimiento #2", mapaInsumos["045"] ?: 0)
-            )
-        } else {
-            listaInsumos = listOf(
-                Insumo("022", "Insumo Procedimiento #1", 0),
-                Insumo("045", "Insumo Procedimiento #2", 0)
-            )
-        }
-
-        adapter = InsumoAdapter(listaInsumos.toMutableList())
+        adapter = InsumoAdapter(emptyList())
         recyclerView = findViewById(R.id.listainsumos)
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        findViewById<ImageView>(R.id.btnBack).setOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
+        // Carga los insumos reales
+        obtenerInsumosDesdeBackend()
 
-        findViewById<ImageView>(R.id.btnLogout).setOnClickListener {
-            mostrarDialogoCerrarSesion()
-        }
+        recyclerView = findViewById(R.id.listainsumos)
+        recyclerView.adapter = adapter
+        recyclerView.layoutManager = LinearLayoutManager(this)
 
-        botonGuardar.setOnClickListener {
-            mostrarDialogoGuardarDatos()
-        }
+        findViewById<ImageView>(R.id.btnBack)?.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        findViewById<ImageView>(R.id.btnLogout)?.setOnClickListener { mostrarDialogoCerrarSesion() }
+        botonGuardar.setOnClickListener { mostrarDialogoGuardarDatos() }
 
-        configurarInterfazSegunEstado()
+        obtenerProcedimientosDesdeBackend()
+    }
+
+    private fun obtenerProcedimientosDesdeBackend() {
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null)
+
+        if (token != null && visitaId != -1) {
+            val api = RetrofitClient.getInstance(token)
+            Log.d("PROC_API", "Visita ID enviado: $visitaId")
+            api.getProcedimientosPorVisita(visitaId)
+                .enqueue(object : Callback<List<Procedimiento>> {
+                    override fun onResponse(call: Call<List<Procedimiento>>, response: Response<List<Procedimiento>>) {
+                        if (response.isSuccessful) {
+                            val lista = response.body() ?: emptyList()
+                            procedimientoAdapter = ProcedimientoAdapter(lista)
+                            recyclerProcedimientos.adapter = procedimientoAdapter
+
+                            val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: return
+                            val jsonData = JsonUtils.loadData(this@VisitaPaciente)
+                            val pacienteData = jsonData.optJSONObject(nombrePaciente)
+                            val procedimientosGuardados = pacienteData?.optJSONArray("procedimientos")
+
+                            lista.forEach { proc ->
+                                if (procedimientosGuardados != null) {
+                                    for (i in 0 until procedimientosGuardados.length()) {
+                                        if (procedimientosGuardados.getString(i) == proc.nombre) {
+                                            proc.realizado = true
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+
+                            procedimientoAdapter.setEditable(estadoVisita != ESTADO_COMPLETADA)
+                            configurarInterfazSegunEstado()
+                        } else {
+                            Log.e("PROC_API", "Error al obtener procedimientos: ${response.code()}")
+                        }
+                    }
+                    override fun onFailure(call: Call<List<Procedimiento>>, t: Throwable) {
+                        Log.e("PROC_API", "Fallo de red al obtener procedimientos", t)
+                    }
+                })
+        }
+    }
+
+    private fun obtenerInsumosDesdeBackend() {
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null)
+
+        if (token != null && visitaId != -1) {
+            val api = RetrofitClient.getInstance(token)
+            api.getInsumosPorVisita(visitaId).enqueue(object : Callback<List<Insumo>> {
+                override fun onResponse(call: Call<List<Insumo>>, response: Response<List<Insumo>>) {
+                    if (response.isSuccessful) {
+                        val lista = response.body()?.map {
+                            Insumo(it.codigo, it.insumo, 0)  // Cantidad inicial en 0
+                        } ?: emptyList()
+
+                        adapter.actualizarLista(lista)
+                        adapter.setEditable(estadoVisita != ESTADO_COMPLETADA)
+                    } else {
+                        Log.e("INSUMOS_API", "Error al obtener insumos: ${response.code()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<List<Insumo>>, t: Throwable) {
+                    Log.e("INSUMOS_API", "Fallo de red al obtener insumos", t)
+                }
+            })
+        }
     }
 
     private fun guardarDatosEnJson() {
-        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text).text.toString()
-        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        val comentariosTexto = comentariosLayout?.editText?.text?.toString() ?: ""
-        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
-        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
-        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
-        val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
-
+        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)?.text.toString()
         val horaSalidaView = findViewById<TextView>(R.id.hora_salida_text)
-        var horaSalidaText = horaSalidaView.text.toString()
+        var horaSalidaText = horaSalidaView?.text.toString()
 
         if (horaSalidaText.isBlank()) {
             horaSalidaText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            horaSalidaView.text = horaSalidaText
+            horaSalidaView?.text = horaSalidaText
         }
 
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
+        val comentariosTexto = findViewById<TextInputLayout>(R.id.comentarios)?.editText?.text?.toString() ?: ""
+        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
+        val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
+
+        val procedimientosSeleccionados = JSONArray()
+        procedimientoAdapter.obtenerProcedimientosSeleccionados().forEach {
+            procedimientosSeleccionados.put(it.nombre)
+        }
 
         val jsonData = JsonUtils.loadData(this)
         val pacienteData = JSONObject().apply {
             put("hora_llegada", horaLlegadaText)
             put("hora_salida", horaSalidaText)
             put("comentarios", comentariosTexto)
-            put("check_box_1", checkBox1.isChecked)
-            put("check_box_2", checkBox2.isChecked)
+            put("procedimientos", procedimientosSeleccionados)
             put("insumos", insumosJson)
             put("estado_visita", ESTADO_COMPLETADA)
         }
@@ -201,14 +227,15 @@ class VisitaPaciente : AppCompatActivity() {
     }
 
     private fun guardarDatosTemporales() {
-        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text).text.toString()
-        val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text).text.toString()
-        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        val comentariosTexto = comentariosLayout?.editText?.text?.toString() ?: ""
-        val checkBox1 = findViewById<CheckBox>(R.id.checkBox1)
-        val checkBox2 = findViewById<CheckBox>(R.id.checkBox2)
+        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)?.text.toString()
+        val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)?.text.toString()
+        val comentariosTexto = findViewById<TextInputLayout>(R.id.comentarios)?.editText?.text?.toString() ?: ""
         val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
         val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
+        val procedimientosSeleccionados = JSONArray()
+        procedimientoAdapter.obtenerProcedimientosSeleccionados().forEach {
+            procedimientosSeleccionados.put(it.nombre)
+        }
 
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: return
 
@@ -217,8 +244,7 @@ class VisitaPaciente : AppCompatActivity() {
             put("hora_llegada", horaLlegadaText)
             put("hora_salida", horaSalidaText)
             put("comentarios", comentariosTexto)
-            put("check_box_1", checkBox1.isChecked)
-            put("check_box_2", checkBox2.isChecked)
+            put("procedimientos", procedimientosSeleccionados)
             put("insumos", insumosJson)
             put("estado_visita", ESTADO_EN_PROGRESO)
         }
@@ -227,35 +253,23 @@ class VisitaPaciente : AppCompatActivity() {
     }
 
     private fun configurarInterfazSegunEstado() {
-        val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        val comentariosEditText = comentariosLayout?.editText
-        when (estadoVisita) {
-            ESTADO_NO_INICIADA -> {
-                habilitarControles(true)
-                adapter.setEditable(true)
-                botonGuardar.text = "Guardar Visita"
-            }
-            ESTADO_EN_PROGRESO -> {
-                findViewById<TextView>(R.id.hora_llegada_text).isEnabled = false
-                habilitarControles(true)
-                adapter.setEditable(true)
-                botonGuardar.text = "Finalizar Visita"
-            }
-            ESTADO_COMPLETADA -> {
-                habilitarControles(false)
-                adapter.setEditable(false)
-                comentariosEditText?.isEnabled = true
-                botonGuardar.text = "Actualizar Comentarios"
-            }
+        val habilitar = estadoVisita != ESTADO_COMPLETADA
+        habilitarControles(habilitar)
+        adapter.setEditable(habilitar)
+        if (::procedimientoAdapter.isInitialized) {
+            procedimientoAdapter.setEditable(habilitar)
+        }
+        botonGuardar.text = when (estadoVisita) {
+            ESTADO_NO_INICIADA -> "Guardar Visita"
+            ESTADO_EN_PROGRESO -> "Finalizar Visita"
+            ESTADO_COMPLETADA -> "Actualizar Comentarios"
+            else -> "Guardar"
         }
     }
 
     private fun habilitarControles(habilitar: Boolean) {
-        findViewById<CheckBox>(R.id.checkBox1).isEnabled = habilitar
-        findViewById<CheckBox>(R.id.checkBox2).isEnabled = habilitar
-        findViewById<RecyclerView>(R.id.listainsumos).isEnabled = habilitar
-        findViewById<EditText>(R.id.search_input).isEnabled = habilitar
-        findViewById<ImageView>(R.id.search_button).isEnabled = habilitar
+        findViewById<EditText>(R.id.search_input)?.isEnabled = habilitar
+        findViewById<ImageView>(R.id.search_button)?.isEnabled = habilitar
 
         val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
         comentariosLayout?.isEnabled = habilitar
@@ -263,44 +277,36 @@ class VisitaPaciente : AppCompatActivity() {
     }
 
     private fun mostrarDialogoGuardarDatos() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Guardar Datos")
-        builder.setMessage("¿Desea guardar los datos?")
-        builder.setPositiveButton("Si") { _, _ ->
-            dialogoConfirmacion()
-        }
-        builder.setNegativeButton("No", null)
-        builder.show()
+        AlertDialog.Builder(this)
+            .setTitle("Guardar Datos")
+            .setMessage("¿Desea guardar los datos?")
+            .setPositiveButton("Si") { _, _ -> dialogoConfirmacion() }
+            .setNegativeButton("No", null)
+            .show()
     }
 
     private fun dialogoConfirmacion() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Confirmacion Guardar Datos")
-        builder.setMessage("¿Esta seguro de que desea guardar los datos?, podra mofificar los comentarios despues")
-        builder.setPositiveButton("Confirmar") { _, _ ->
-            guardarDatosEnJson()
-            datosGuardados()
-        }
-        builder.setNegativeButton("No", null)
-        builder.show()
-    }
-
-    private fun datosGuardados() {
-        val intent = Intent(this, PacientesActivity::class.java)
-        Toast.makeText(this, "Datos guardados correctamente", Toast.LENGTH_SHORT).show()
-        startActivity(intent)
-        finish()
+        AlertDialog.Builder(this)
+            .setTitle("Confirmación Guardar Datos")
+            .setMessage("¿Está seguro de que desea guardar los datos? Podrá modificar los comentarios después")
+            .setPositiveButton("Confirmar") { _, _ ->
+                guardarDatosEnJson()
+                val intent = Intent(this, com.example.careconnect.main.listaPacientes.PacientesActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
+                finish()
+            }
+            .setNegativeButton("No", null)
+            .show()
     }
 
     private fun mostrarDialogoCerrarSesion() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Cerrar sesión")
-        builder.setMessage("¿Estás seguro de que quieres cerrar sesión?")
-        builder.setPositiveButton("Sí") { _, _ ->
-            cerrarSesion()
-        }
-        builder.setNegativeButton("No", null)
-        builder.show()
+        AlertDialog.Builder(this)
+            .setTitle("Cerrar sesión")
+            .setMessage("¿Estás seguro de que quieres cerrar sesión?")
+            .setPositiveButton("Sí") { _, _ -> cerrarSesion() }
+            .setNegativeButton("No", null)
+            .show()
     }
 
     private fun cerrarSesion() {

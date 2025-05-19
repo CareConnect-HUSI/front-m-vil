@@ -83,7 +83,7 @@
                     android:id="@+id/hora_llegada_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="14:05"
+                    android:text="00:00"
                     android:textSize="16sp"
                     android:layout_marginStart="@dimen/margin_small"/>
             </LinearLayout>
@@ -134,26 +134,24 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="5dp"/>
 
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_procedimientos"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/linea_divisoria"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="8dp"/>
+
         <LinearLayout
-            android:id="@+id/procedimientos"
-            android:layout_width="match_parent"
+            android:id="@+id/procedimiento_container"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            app:layout_constraintTop_toBottomOf="@id/linea_divisoria"
-            android:layout_marginTop="16dp">
-
-            <CheckBox
-                android:id="@+id/checkBox1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Aplicar medicamento #1"/>
-
-            <CheckBox
-                android:id="@+id/checkBox2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Aplicar medicamento #2"/>
-        </LinearLayout>
+            app:layout_constraintTop_toBottomOf="@id/recycler_procedimientos"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="8dp"/>
 
         <!-- Insumos -->
         <TextView
@@ -162,7 +160,7 @@
             android:layout_height="wrap_content"
             android:text="Insumos"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@id/procedimientos"
+            app:layout_constraintTop_toBottomOf="@id/procedimiento_container"
             app:layout_constraintStart_toStartOf="parent"
             android:layout_marginTop="30dp"/>
 
