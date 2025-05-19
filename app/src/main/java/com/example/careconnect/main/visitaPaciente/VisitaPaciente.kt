@@ -97,8 +97,17 @@ class VisitaPaciente : AppCompatActivity() {
         findViewById<TextInputLayout>(R.id.comentarios)?.editText?.setText(comentarios)
 
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)
-
+        val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)
         val jsonData = JsonUtils.loadData(this)
+
+        if (jsonData.has(nombrePaciente)) {
+            val pacienteData = jsonData.getJSONObject(nombrePaciente)
+            horaLlegadaText?.text = pacienteData.optString("hora_llegada", "")
+            horaSalidaText?.text = pacienteData.optString("hora_salida", "")
+            findViewById<TextInputLayout>(R.id.comentarios)?.editText?.setText(
+                pacienteData.optString("comentarios", "")
+            )
+        }
 
         adapter = InsumoAdapter(emptyList())
         recyclerView = findViewById(R.id.listainsumos)
@@ -160,6 +169,30 @@ class VisitaPaciente : AppCompatActivity() {
                         Log.e("PROC_API", "Fallo de red al obtener procedimientos", t)
                     }
                 })
+        }
+    }
+
+    private fun enviarHorasAlBackend(horaLlegada: String, horaSalida: String) {
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null)
+
+        if (token != null && visitaId != -1) {
+            val api = RetrofitClient.getInstance(token)
+            val body = HorasVisitaRequest(horaLlegada, horaSalida)
+
+            api.registrarHoras(visitaId, body).enqueue(object : Callback<ResponseBody> {
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                    if (response.isSuccessful) {
+                        Log.d("HORAS_API", "Horas registradas correctamente")
+                    } else {
+                        Log.e("HORAS_API", "Error al registrar horas: ${response.code()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    Log.e("HORAS_API", "Fallo de red al registrar horas", t)
+                }
+            })
         }
     }
 
@@ -251,6 +284,7 @@ class VisitaPaciente : AppCompatActivity() {
                     }
                 })
         }
+        enviarHorasAlBackend(horaLlegadaText, horaSalidaText)
     }
 
     private fun guardarDatosTemporales() {
