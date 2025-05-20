@@ -73,7 +73,11 @@ class PacientesActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val api = RetrofitClient.getInstance(jwtToken)
-                val pacientes = api.getPacientesAsignados("Bearer $jwtToken")
+                val pacientesFromApi = api.getPacientesAsignados("Bearer $jwtToken")
+//                val pacientes = api.getPacientesAsignados("Bearer $jwtToken")
+                val pacientes = pacientesFromApi.map { paciente ->
+                    paciente.copy(estadoVisita = obtenerEstado(paciente.nombre))
+                }
                 Log.d("DEBUG_PACIENTES", pacientes.joinToString("\n"))
                 recyclerView.adapter = PacienteAdapter(this@PacientesActivity, pacientes)
             } catch (e: Exception) {
@@ -107,7 +111,7 @@ class PacientesActivity : AppCompatActivity() {
         val jsonData = DetallePacienteActivity.JsonUtils.loadData(this)
         val estado = jsonData.optJSONObject(nombre)?.optInt("estado_visita", 0) ?: 0
         return when (estado) {
-            0 -> "NO_INICIADA"
+            0 -> "PROGRAMADA"
             1 -> "EN_PROCESO"
             2 -> "FINALIZADA"
             else -> "NO_INICIADA"

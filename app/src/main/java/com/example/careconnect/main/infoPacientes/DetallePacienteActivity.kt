@@ -14,10 +14,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.careconnect.R
 import com.example.careconnect.main.inicioSesion.LoginActivity
+import com.example.careconnect.main.retroFit.VisitStatusRequest
 import com.example.careconnect.main.visitaPaciente.VisitaPaciente
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import okhttp3.ResponseBody
 import org.json.JSONObject
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -27,6 +32,8 @@ import java.util.Locale
 class DetallePacienteActivity : AppCompatActivity() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var visitaId: Int = -1
+
 
     object JsonUtils {
         private const val FILE_NAME = "visitas_pacientes.json"
@@ -60,7 +67,7 @@ class DetallePacienteActivity : AppCompatActivity() {
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
         val direccionPaciente = intent.getStringExtra("DIRECCION_PACIENTE") ?: ""
         val telefonoPaciente = intent.getStringExtra("TELEFONO_PACIENTE") ?: ""
-        val visitaId = intent.getIntExtra("VISITA_ID", -1)
+         visitaId = intent.getIntExtra("VISITA_ID", -1)
         if (visitaId == -1){
             Log.e("DEBUG_VISITA", "visitaId invalido recibido")
         }
@@ -128,12 +135,15 @@ class DetallePacienteActivity : AppCompatActivity() {
                             val estadoActual = cargarEstadoVisita(nombrePaciente)
 
                             if (estadoActual == VisitaPaciente.ESTADO_NO_INICIADA) {
+                                updateVisitStatusToEnProgreso(visitaId, nombrePaciente)
                                 intent.putExtra("NUEVA_VISITA", true)
                                 val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
                                 intent.putExtra("HORA_LLEGADA", horaActual)
                                 guardarEstadoVisita(nombrePaciente, VisitaPaciente.ESTADO_EN_PROGRESO)
                             } else {
                                 intent.putExtra("ESTADO_VISITA", estadoActual)
+                                proceedToVisitaPaciente(visitaId, nombrePaciente, estadoActual)
+
                             }
 
                             startActivity(intent)
@@ -152,6 +162,59 @@ class DetallePacienteActivity : AppCompatActivity() {
                 Toast.makeText(this, "No se pudo obtener la ubicación actual", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+    private fun updateVisitStatusToEnProgreso(visitaId: Int, nombrePaciente: String) {
+        if (visitaId == -1) {
+            Log.e("STATUS_API", "Invalid visitaId: $visitaId")
+            Toast.makeText(this, "ID de visita inválido", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null)
+        if (token == null) {
+            Log.e("STATUS_API", "No token found")
+            Toast.makeText(this, "No se encontró el token de autenticación", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val api = com.example.careconnect.main.retroFit.RetrofitClient.getInstance(token)
+        val statusRequest = VisitStatusRequest(estadoVisita = "EN_PROGRESO")
+        api.updateVisitStatus(visitaId, statusRequest).enqueue(object : Callback<ResponseBody> {
+            override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                if (response.isSuccessful) {
+                    Log.d("STATUS_API", "Visit status updated to EN_PROGRESO")
+                    Toast.makeText(this@DetallePacienteActivity, "Estado de visita actualizado a En Progreso", Toast.LENGTH_SHORT).show()
+                    // Update local JSON state
+                    guardarEstadoVisita(nombrePaciente, VisitaPaciente.ESTADO_EN_PROGRESO)
+                    // Proceed to VisitaPaciente activity
+                    proceedToVisitaPaciente(visitaId, nombrePaciente, VisitaPaciente.ESTADO_EN_PROGRESO)
+                } else {
+                    Log.e("STATUS_API", "Error updating status: ${response.code()}, ${response.errorBody()?.string()}")
+                    Toast.makeText(this@DetallePacienteActivity, "Error al actualizar estado (${response.code()})", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                Log.e("STATUS_API", "Network failure updating status", t)
+                Toast.makeText(this@DetallePacienteActivity, "Fallo de red al actualizar estado", Toast.LENGTH_LONG).show()
+            }
+        })
+    }
+    private fun proceedToVisitaPaciente(visitaId: Int, nombrePaciente: String, estadoActual: Int) {
+        val intent = Intent(this, VisitaPaciente::class.java)
+        intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)
+        intent.putExtra("VISITA_ID", visitaId)
+
+        if (estadoActual == VisitaPaciente.ESTADO_NO_INICIADA) {
+            intent.putExtra("NUEVA_VISITA", true)
+            val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            intent.putExtra("HORA_LLEGADA", horaActual)
+        } else {
+            intent.putExtra("ESTADO_VISITA", estadoActual)
+        }
+
+        startActivity(intent)
     }
 
     private fun calcularDistancia(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {

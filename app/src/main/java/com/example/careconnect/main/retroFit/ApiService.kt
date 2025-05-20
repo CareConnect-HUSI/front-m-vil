@@ -14,6 +14,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.Response
+import retrofit2.http.PUT
 
 interface ApiService {
     @POST("/login")
@@ -43,7 +44,11 @@ interface ApiService {
         @Path("visita_id") visitaId: Int,
         @Body insumos: List<InsumoConsumidoRequest>
     ): Call<ResponseBody>
+
+    @PUT("visita/{visitaId}/status")
+    fun updateVisitStatus(@Path("visitaId") visitaId: Int, @Body status: VisitStatusRequest): Call<ResponseBody>
 }
+
 
 data class Credenciales(
     val email: String,
@@ -54,4 +59,6 @@ data class ApiResponse(
     val success: Boolean,
     val message: String
 )
-
+data class VisitStatusRequest(
+    val estadoVisita: String
+)

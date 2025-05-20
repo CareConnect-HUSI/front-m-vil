@@ -16,6 +16,7 @@ import com.example.careconnect.main.registrarInsumos.Insumo
 import com.example.careconnect.main.registrarInsumos.InsumoAdapter
 import com.example.careconnect.main.registrarProcedimientos.Procedimiento
 import com.example.careconnect.main.retroFit.RetrofitClient
+import com.example.careconnect.main.retroFit.VisitStatusRequest
 import com.google.android.material.textfield.TextInputLayout
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -283,6 +284,25 @@ class VisitaPaciente : AppCompatActivity() {
                         android.util.Log.e("INSUMOS_API", "Fallo de red al registrar insumos", t)
                     }
                 })
+            // Update visit status
+            val statusRequest = VisitStatusRequest(estadoVisita = "COMPLETADA")
+            api.updateVisitStatus(visitaId, statusRequest)
+                .enqueue(object : Callback<ResponseBody> {
+                    override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                        if (response.isSuccessful) {
+                            Log.d("STATUS_API", "Visit status updated to COMPLETADA")
+                            Toast.makeText(this@VisitaPaciente, "Estado de visita actualizado", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Log.e("STATUS_API", "Error updating status: ${response.code()}, ${response.errorBody()?.string()}")
+                            Toast.makeText(this@VisitaPaciente, "Error al actualizar estado (${response.code()})", Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                        Log.e("STATUS_API", "Network failure updating status", t)
+                        Toast.makeText(this@VisitaPaciente, "Fallo de red al actualizar estado", Toast.LENGTH_LONG).show()
+                    }
+                })
         }
         enviarHorasAlBackend(horaLlegadaText, horaSalidaText)
     }
@@ -333,8 +353,8 @@ class VisitaPaciente : AppCompatActivity() {
         findViewById<ImageView>(R.id.search_button)?.isEnabled = habilitar
 
         val comentariosLayout = findViewById<TextInputLayout>(R.id.comentarios)
-        comentariosLayout?.isEnabled = habilitar
-        comentariosLayout?.editText?.isEnabled = habilitar
+        comentariosLayout?.isEnabled = true
+        comentariosLayout?.editText?.isEnabled = true
     }
 
     private fun mostrarDialogoGuardarDatos() {

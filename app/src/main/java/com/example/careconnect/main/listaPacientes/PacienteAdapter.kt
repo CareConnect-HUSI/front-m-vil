@@ -47,7 +47,7 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
             intent.putExtra("TELEFONO_PACIENTE", paciente.telefono)
             intent.putExtra("VISITA_ID", paciente.visitaId)
             intent.putExtra("ESTADO_VISITA", when (paciente.estadoVisita) {
-                "NO_INICIADA" -> 0
+                "PROGRAMADA" -> 0
                 "EN_PROCESO" -> 1
                 "FINALIZADA" -> 2
                 else -> 0
@@ -64,7 +64,7 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.iconoNoIniciada.visibility = View.GONE
 
         when (estado) {
-            "NO_INICIADA" -> holder.iconoNoIniciada.visibility = View.VISIBLE
+            "PROGRAMADA" -> holder.iconoNoIniciada.visibility = View.VISIBLE
             "EN_PROCESO" -> holder.iconoEspera.visibility = View.VISIBLE
             "FINALIZADA" -> holder.iconoCompletado.visibility = View.VISIBLE
         }
