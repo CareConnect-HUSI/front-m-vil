@@ -27,7 +27,6 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         val nombrePaciente: TextView = view.findViewById(R.id.nombre_paciente)
         val horaAtencion: TextView = view.findViewById(R.id.hora_atencion)
         val direccion: TextView = view.findViewById(R.id.direccion_paciente)
-        val telefono: TextView = view.findViewById(R.id.telefono_paciente)
         val botonDetallePaciente: LinearLayout = view.findViewById(R.id.boton_detalle_paciente)
         val iconoCompletado: ImageView = view.findViewById(R.id.icono_estado_visita_completada)
         val iconoEspera: ImageView = view.findViewById(R.id.icono_estado_visita_espera)
@@ -45,7 +44,6 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         holder.nombrePaciente.text = paciente.nombre
         holder.horaAtencion.text = "Hora: ${paciente.hora}"
         holder.direccion.text = "Dirección: ${paciente.direccion}"
-        holder.telefono.text = "Teléfono: ${paciente.telefono}"
 
         // Obtener estado real desde backend
         val prefs = context.getSharedPreferences("SessionPrefs", Context.MODE_PRIVATE)

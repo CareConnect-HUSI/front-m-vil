@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -29,10 +30,7 @@ class PacientesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pacientes)
 
-        // Botones de navegación
-        findViewById<ImageView>(R.id.btnBack).setOnClickListener {
-            mostrarDialogoCerrarSesion()
-        }
+        findViewById<ImageView>(R.id.btnBack).visibility = View.INVISIBLE
 
         findViewById<ImageView>(R.id.btnLogout).setOnClickListener {
             mostrarDialogoCerrarSesion()
