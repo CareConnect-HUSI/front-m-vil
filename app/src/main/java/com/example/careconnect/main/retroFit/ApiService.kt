@@ -5,6 +5,7 @@ import com.example.careconnect.main.registrarProcedimientos.Procedimiento
 import com.example.careconnect.main.registrarInsumos.Insumo
 import com.example.careconnect.main.inicioSesion.LoginResponse
 import com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest
+import com.example.careconnect.main.visitaPaciente.EstadoVisitaResponse
 import com.example.careconnect.main.visitaPaciente.HorasVisitaRequest
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -47,6 +48,9 @@ interface ApiService {
 
     @PUT("visita/{visitaId}/status")
     fun updateVisitStatus(@Path("visitaId") visitaId: Int, @Body status: VisitStatusRequest): Call<ResponseBody>
+
+    @GET("visita/{id}/estado")
+    fun obtenerEstadoVisita(@Path("id") visitaId: Int): Call<EstadoVisitaResponse>
 }
 
 
