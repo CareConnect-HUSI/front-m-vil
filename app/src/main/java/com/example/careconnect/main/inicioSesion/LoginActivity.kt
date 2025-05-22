@@ -42,6 +42,9 @@ class LoginActivity : AppCompatActivity() {
         val loginButton = findViewById<Button>(R.id.login_button)
         val forgotPassword = findViewById<TextView>(R.id.forgot_password)
 
+        // Toggle de contraseña
+        passwordInput.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+
         loginButton.setOnClickListener {
             email = emailInput.text.toString().trim()
             password = passwordInput.text.toString().trim()

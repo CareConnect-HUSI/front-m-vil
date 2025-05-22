@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
@@ -31,6 +32,7 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         val iconoCompletado: ImageView = view.findViewById(R.id.icono_estado_visita_completada)
         val iconoEspera: ImageView = view.findViewById(R.id.icono_estado_visita_espera)
         val iconoNoIniciada: ImageView = view.findViewById(R.id.icono_estado_visita_noIniciada)
+        val loading: ProgressBar = view.findViewById(R.id.estado_loading)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -40,6 +42,14 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        // Ocultar Iconos mientras hace la consulta y mostrar loading
+        holder.loading.visibility = View.VISIBLE
+
+        holder.iconoCompletado.visibility = View.GONE
+        holder.iconoEspera.visibility = View.GONE
+        holder.iconoNoIniciada.visibility = View.GONE
+
+        // Informacion Paciente
         val paciente = pacientes[position]
         holder.nombrePaciente.text = paciente.nombre
         holder.horaAtencion.text = "Hora: ${paciente.hora}"
@@ -56,6 +66,7 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
                     response: Response<EstadoVisitaResponse>
                 ) {
                     if (response.isSuccessful) {
+                        holder.loading.visibility = View.GONE
                         val estadoReal = response.body()?.estado ?: "PROGRAMADA"
                         mostrarEstado(holder, estadoReal)
 

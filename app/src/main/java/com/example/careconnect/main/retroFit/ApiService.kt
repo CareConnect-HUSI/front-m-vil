@@ -46,11 +46,17 @@ interface ApiService {
         @Body insumos: List<InsumoConsumidoRequest>
     ): Call<ResponseBody>
 
+    @GET("visita/{visita_id}/insumos/consumidos")
+    fun getInsumosConsumidos(
+        @Path("visita_id") visitaId: Int
+    ): Call<List<InsumoConsumidoRequest>>
+
     @PUT("visita/{visitaId}/status")
     fun updateVisitStatus(@Path("visitaId") visitaId: Int, @Body status: VisitStatusRequest): Call<ResponseBody>
 
     @GET("visita/{id}/estado")
     fun obtenerEstadoVisita(@Path("id") visitaId: Int): Call<EstadoVisitaResponse>
+
 }
 
 

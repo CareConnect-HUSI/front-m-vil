@@ -27,6 +27,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import org.json.JSONArray
 import org.json.JSONObject
+import android.text.TextWatcher
+import android.text.Editable
+import com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest
 
 class VisitaPaciente : AppCompatActivity() {
 
@@ -74,6 +77,18 @@ class VisitaPaciente : AppCompatActivity() {
 
         procedimientoAdapter = ProcedimientoAdapter(emptyList())
         recyclerProcedimientos.adapter = procedimientoAdapter
+
+        // In VisitaPaciente.kt, inside onCreate after initializing adapter and recyclerView:
+        val searchInput = findViewById<EditText>(R.id.search_input)
+        searchInput?.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val query = s.toString().trim()
+                adapter.filtrar(query)
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         estadoVisita = intent.getIntExtra("ESTADO_VISITA", ESTADO_NO_INICIADA)
         visitaId = intent.getIntExtra("VISITA_ID", -1)
@@ -207,10 +222,31 @@ class VisitaPaciente : AppCompatActivity() {
                 override fun onResponse(call: Call<List<Insumo>>, response: Response<List<Insumo>>) {
                     if (response.isSuccessful) {
                         val lista = response.body()?.map {
-                            Insumo(it.codigo, it.insumo, 0)  // Cantidad inicial en 0
-                        } ?: emptyList()
+                            Insumo(it.codigo, it.insumo, 0)
+                        }?.toMutableList() ?: mutableListOf()
 
-                        adapter.actualizarLista(lista)
+                        if (estadoVisita == ESTADO_COMPLETADA) {
+                            api.getInsumosConsumidos(visitaId).enqueue(object : Callback<List<InsumoConsumidoRequest>> {
+                                override fun onResponse(
+                                    call: Call<List<InsumoConsumidoRequest>>,
+                                    response: Response<List<InsumoConsumidoRequest>>
+                                ) {
+                                    if (response.isSuccessful) {
+                                        val consumidos = response.body() ?: emptyList()
+                                        for (c in consumidos) {
+                                            lista.find { it.codigo == c.codigo }?.cantidad = c.cantidad
+                                        }
+                                        adapter.actualizarLista(lista)
+                                    }
+                                }
+
+                                override fun onFailure(call: Call<List<InsumoConsumidoRequest>>, t: Throwable) {
+                                    Log.e("INSUMOS_API", "Error al traer cantidades", t)
+                                }
+                            })
+                        } else {
+                            adapter.actualizarLista(lista)
+                        }
                         adapter.setEditable(estadoVisita != ESTADO_COMPLETADA)
                     } else {
                         Log.e("INSUMOS_API", "Error al obtener insumos: ${response.code()}")
@@ -223,6 +259,7 @@ class VisitaPaciente : AppCompatActivity() {
             })
         }
     }
+
 
     private fun guardarDatosEnJson() {
         val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)?.text.toString()

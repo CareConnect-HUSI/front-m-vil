@@ -1,3 +1,4 @@
+// app/src/main/java/com/example/careconnect/main/registrarInsumos/InsumoAdapter.kt
 package com.example.careconnect.main.registrarInsumos
 
 import android.view.LayoutInflater
@@ -12,6 +13,7 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
     RecyclerView.Adapter<InsumoAdapter.ViewHolder>() {
 
     private var editable: Boolean = true
+    private var listaOriginal: List<Insumo> = insumos.toList()
 
     fun setEditable(valor: Boolean) {
         editable = valor
@@ -58,22 +60,27 @@ class InsumoAdapter(private var insumos: List<Insumo>) :
                 }
             }
         } else {
-            // Si no es editable, eliminar los listeners para evitar interacciones
             holder.buttonIncrease.setOnClickListener(null)
             holder.buttonDecrease.setOnClickListener(null)
         }
     }
 
-    override fun getItemCount(): Int {
-        return insumos.size
-    }
+    override fun getItemCount(): Int = insumos.size
 
-    fun actualizarLista(nuevaLista: List<Insumo>) {
-        insumos = nuevaLista.toMutableList()
+    fun actualizarLista(lista: List<Insumo>) {
+        listaOriginal = lista.toList()
+        this.insumos = lista
         notifyDataSetChanged()
     }
 
-    fun obtenerLista(): List<Insumo> {
-        return insumos
+    fun filtrar(query: String) {
+        insumos = if (query.isEmpty()) {
+            listaOriginal
+        } else {
+            listaOriginal.filter { it.insumo.contains(query, ignoreCase = true) }
+        }
+        notifyDataSetChanged()
     }
+
+    fun obtenerLista(): List<Insumo> = insumos
 }
