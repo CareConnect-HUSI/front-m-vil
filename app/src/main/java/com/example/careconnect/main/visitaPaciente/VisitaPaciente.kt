@@ -1,8 +1,14 @@
 package com.example.careconnect.main.visitaPaciente
 
+import android.Manifest
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.Context.RECEIVER_NOT_EXPORTED
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
 import android.widget.*
@@ -14,6 +20,7 @@ import com.example.careconnect.main.adapters.ProcedimientoAdapter
 import com.example.careconnect.main.inicioSesion.LoginActivity
 import com.example.careconnect.main.registrarInsumos.Insumo
 import com.example.careconnect.main.registrarInsumos.InsumoAdapter
+import com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest
 import com.example.careconnect.main.registrarProcedimientos.Procedimiento
 import com.example.careconnect.main.retroFit.RetrofitClient
 import com.example.careconnect.main.retroFit.VisitStatusRequest
@@ -29,7 +36,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import android.text.TextWatcher
 import android.text.Editable
-import com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest
+import androidx.annotation.RequiresPermission
 
 class VisitaPaciente : AppCompatActivity() {
 
@@ -53,6 +60,34 @@ class VisitaPaciente : AppCompatActivity() {
         }
     }
 
+    object SyncStorage {
+        private const val FILE_NAME = "visitas_pendientes.json"
+        fun guardarVisitaPendiente(context: Context, visita: JSONObject) {
+            val file = File(context.filesDir, FILE_NAME)
+            val array = if (file.exists()) JSONArray(file.readText()) else JSONArray()
+            array.put(visita)
+            file.writeText(array.toString())
+        }
+        fun obtenerVisitasPendientes(context: Context): JSONArray {
+            val file = File(context.filesDir, FILE_NAME)
+            return if (file.exists()) JSONArray(file.readText()) else JSONArray()
+        }
+        fun limpiar(context: Context) {
+            val file = File(context.filesDir, FILE_NAME)
+            if (file.exists()) file.delete()
+        }
+    }
+
+    object NetworkUtils {
+        @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+        fun hayInternet(context: Context): Boolean {
+            val cm = context.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = cm.activeNetwork ?: return false
+            val capabilities = cm.getNetworkCapabilities(network) ?: return false
+            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+    }
+
     private lateinit var recyclerProcedimientos: RecyclerView
     private lateinit var procedimientoAdapter: ProcedimientoAdapter
     private lateinit var adapter: InsumoAdapter
@@ -60,6 +95,17 @@ class VisitaPaciente : AppCompatActivity() {
     private val botonGuardar: Button by lazy { findViewById(R.id.guardar_datos) }
     private var estadoVisita: Int = ESTADO_NO_INICIADA
     private var visitaId: Int = -1
+    private lateinit var networkReceiver: BroadcastReceiver
+
+    private val restablecerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.example.careconnect.NETWORK_RESTORED") {
+                Toast.makeText(this@VisitaPaciente, "Conexión restaurada. Actualizando datos...", Toast.LENGTH_SHORT).show()
+                obtenerInsumosDesdeBackend()
+                obtenerProcedimientosDesdeBackend()
+            }
+        }
+    }
 
     override fun onPause() {
         super.onPause()
@@ -74,18 +120,15 @@ class VisitaPaciente : AppCompatActivity() {
 
         recyclerProcedimientos = findViewById(R.id.recycler_procedimientos)
         recyclerProcedimientos.layoutManager = LinearLayoutManager(this)
-
         procedimientoAdapter = ProcedimientoAdapter(emptyList())
         recyclerProcedimientos.adapter = procedimientoAdapter
 
-        // In VisitaPaciente.kt, inside onCreate after initializing adapter and recyclerView:
         val searchInput = findViewById<EditText>(R.id.search_input)
         searchInput?.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                val query = s.toString().trim()
+                val query = s?.toString()?.trim() ?: ""
                 adapter.filtrar(query)
             }
-
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
@@ -130,18 +173,23 @@ class VisitaPaciente : AppCompatActivity() {
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        // Carga los insumos reales
         obtenerInsumosDesdeBackend()
-
-        recyclerView = findViewById(R.id.listainsumos)
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(this)
 
         findViewById<ImageView>(R.id.btnBack)?.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         findViewById<ImageView>(R.id.btnLogout)?.setOnClickListener { mostrarDialogoCerrarSesion() }
         botonGuardar.setOnClickListener { mostrarDialogoGuardarDatos() }
 
+        networkReceiver = NetworkRestoredReceiver {
+            VisitaSyncUtils.sincronizarVisitasPendientes(this)
+        }
+        registerReceiver(networkReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
         obtenerProcedimientosDesdeBackend()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(networkReceiver)
+        unregisterReceiver(restablecerReceiver)
     }
 
     private fun obtenerProcedimientosDesdeBackend() {
@@ -150,14 +198,11 @@ class VisitaPaciente : AppCompatActivity() {
 
         if (token != null && visitaId != -1) {
             val api = RetrofitClient.getInstance(token)
-            Log.d("PROC_API", "Visita ID enviado: $visitaId")
             api.getProcedimientosPorVisita(visitaId)
                 .enqueue(object : Callback<List<Procedimiento>> {
                     override fun onResponse(call: Call<List<Procedimiento>>, response: Response<List<Procedimiento>>) {
                         if (response.isSuccessful) {
                             val lista = response.body() ?: emptyList()
-                            procedimientoAdapter = ProcedimientoAdapter(lista)
-                            recyclerProcedimientos.adapter = procedimientoAdapter
 
                             val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: return
                             val jsonData = JsonUtils.loadData(this@VisitaPaciente)
@@ -175,12 +220,16 @@ class VisitaPaciente : AppCompatActivity() {
                                 }
                             }
 
+                            // Mostrar en pantalla
+                            procedimientoAdapter = ProcedimientoAdapter(lista)
+                            recyclerProcedimientos.adapter = procedimientoAdapter
                             procedimientoAdapter.setEditable(estadoVisita != ESTADO_COMPLETADA)
                             configurarInterfazSegunEstado()
                         } else {
                             Log.e("PROC_API", "Error al obtener procedimientos: ${response.code()}")
                         }
                     }
+
                     override fun onFailure(call: Call<List<Procedimiento>>, t: Throwable) {
                         Log.e("PROC_API", "Fallo de red al obtener procedimientos", t)
                     }
@@ -218,43 +267,41 @@ class VisitaPaciente : AppCompatActivity() {
 
         if (token != null && visitaId != -1) {
             val api = RetrofitClient.getInstance(token)
+
             api.getInsumosPorVisita(visitaId).enqueue(object : Callback<List<Insumo>> {
                 override fun onResponse(call: Call<List<Insumo>>, response: Response<List<Insumo>>) {
                     if (response.isSuccessful) {
-                        val lista = response.body()?.map {
-                            Insumo(it.codigo, it.insumo, 0)
-                        }?.toMutableList() ?: mutableListOf()
+                        val insumos = response.body()?.map { Insumo(it.codigo, it.insumo, 0) }?.toMutableList() ?: mutableListOf()
 
                         if (estadoVisita == ESTADO_COMPLETADA) {
                             api.getInsumosConsumidos(visitaId).enqueue(object : Callback<List<InsumoConsumidoRequest>> {
-                                override fun onResponse(
-                                    call: Call<List<InsumoConsumidoRequest>>,
-                                    response: Response<List<InsumoConsumidoRequest>>
-                                ) {
+                                override fun onResponse(call: Call<List<InsumoConsumidoRequest>>, response: Response<List<InsumoConsumidoRequest>>) {
                                     if (response.isSuccessful) {
                                         val consumidos = response.body() ?: emptyList()
-                                        for (c in consumidos) {
-                                            lista.find { it.codigo == c.codigo }?.cantidad = c.cantidad
+                                        consumidos.forEach { usado ->
+                                            insumos.find { it.codigo == usado.codigo }?.cantidad = usado.cantidad
                                         }
-                                        adapter.actualizarLista(lista)
+                                        adapter.actualizarLista(insumos)
+                                        adapter.setEditable(false)
+                                    } else {
+                                        Log.e("INSUMOS", "Error al obtener consumidos: ${response.code()}")
                                     }
                                 }
-
                                 override fun onFailure(call: Call<List<InsumoConsumidoRequest>>, t: Throwable) {
-                                    Log.e("INSUMOS_API", "Error al traer cantidades", t)
+                                    Log.e("INSUMOS", "Fallo red consumidos", t)
                                 }
                             })
                         } else {
-                            adapter.actualizarLista(lista)
+                            adapter.actualizarLista(insumos)
+                            adapter.setEditable(true)
                         }
-                        adapter.setEditable(estadoVisita != ESTADO_COMPLETADA)
                     } else {
                         Log.e("INSUMOS_API", "Error al obtener insumos: ${response.code()}")
                     }
                 }
 
                 override fun onFailure(call: Call<List<Insumo>>, t: Throwable) {
-                    Log.e("INSUMOS_API", "Fallo de red al obtener insumos", t)
+                    Log.e("INSUMOS_API", "Fallo red insumos", t)
                 }
             })
         }
@@ -274,8 +321,6 @@ class VisitaPaciente : AppCompatActivity() {
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
         val comentariosTexto = findViewById<TextInputLayout>(R.id.comentarios)?.editText?.text?.toString() ?: ""
         val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
-        val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
-
         val procedimientosSeleccionados = JSONArray()
         procedimientoAdapter.obtenerProcedimientosSeleccionados().forEach {
             procedimientosSeleccionados.put(it.nombre)
@@ -283,11 +328,16 @@ class VisitaPaciente : AppCompatActivity() {
 
         val jsonData = JsonUtils.loadData(this)
         val pacienteData = JSONObject().apply {
+            put("visita_id", visitaId)
+            put("nombre_paciente", nombrePaciente)
             put("hora_llegada", horaLlegadaText)
             put("hora_salida", horaSalidaText)
             put("comentarios", comentariosTexto)
             put("procedimientos", procedimientosSeleccionados)
-            put("insumos", insumosJson)
+            put("insumos", JSONArray(insumosUsados.map { JSONObject().apply {
+                put("codigo", it.codigo)
+                put("cantidad", it.cantidad)
+            }}))
             put("estado_visita", ESTADO_COMPLETADA)
         }
         jsonData.put(nombrePaciente, pacienteData)
@@ -297,31 +347,32 @@ class VisitaPaciente : AppCompatActivity() {
         configurarInterfazSegunEstado()
 
         val insumosParaEnviar = insumosUsados.map {
-            com.example.careconnect.main.registrarInsumos.InsumoConsumidoRequest(it.codigo, it.cantidad)
+            InsumoConsumidoRequest(it.codigo, it.cantidad)
         }
 
         val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
         val token = prefs.getString("JWT_TOKEN", null)
 
         if (token != null && visitaId != -1) {
-            val api = com.example.careconnect.main.retroFit.RetrofitClient.getInstance(token)
+            val api = RetrofitClient.getInstance(token)
             api.registrarInsumosConsumidos(visitaId, insumosParaEnviar)
-                .enqueue(object : retrofit2.Callback<okhttp3.ResponseBody> {
-                    override fun onResponse(call: retrofit2.Call<okhttp3.ResponseBody>, response: retrofit2.Response<okhttp3.ResponseBody>) {
+                .enqueue(object : Callback<ResponseBody> {
+                    override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                         if (response.isSuccessful) {
                             Toast.makeText(this@VisitaPaciente, "Insumos registrados correctamente", Toast.LENGTH_SHORT).show()
                         } else {
                             Toast.makeText(this@VisitaPaciente, "Error al registrar insumos (${response.code()})", Toast.LENGTH_LONG).show()
-                            android.util.Log.e("INSUMOS_API", "Error al registrar insumos: ${response.errorBody()?.string()}")
+                            Log.e("INSUMOS_API", "Error al registrar insumos: ${response.errorBody()?.string()}")
+                            guardarVisitaPendienteLocal()
                         }
                     }
 
-                    override fun onFailure(call: retrofit2.Call<okhttp3.ResponseBody>, t: Throwable) {
+                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                         Toast.makeText(this@VisitaPaciente, "Fallo de red al enviar insumos", Toast.LENGTH_LONG).show()
-                        android.util.Log.e("INSUMOS_API", "Fallo de red al registrar insumos", t)
+                        Log.e("INSUMOS_API", "Fallo de red al registrar insumos", t)
+                        guardarVisitaPendienteLocal()
                     }
                 })
-            // Update visit status
             val statusRequest = VisitStatusRequest(estadoVisita = "COMPLETADA")
             api.updateVisitStatus(visitaId, statusRequest)
                 .enqueue(object : Callback<ResponseBody> {
@@ -344,12 +395,31 @@ class VisitaPaciente : AppCompatActivity() {
         enviarHorasAlBackend(horaLlegadaText, horaSalidaText)
     }
 
+    private fun guardarVisitaPendienteLocal() {
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
+        val horaLlegada = findViewById<TextView>(R.id.hora_llegada_text)?.text.toString()
+        val horaSalida = findViewById<TextView>(R.id.hora_salida_text)?.text.toString()
+        val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
+        val insumosJson = JSONArray(insumosUsados.map {
+            JSONObject().apply {
+                put("codigo", it.codigo)
+                put("cantidad", it.cantidad)
+            }
+        })
+        val visitaJson = JSONObject().apply {
+            put("visita_id", visitaId)
+            put("hora_llegada", horaLlegada)
+            put("hora_salida", horaSalida)
+            put("insumos", insumosJson)
+        }
+        SyncStorage.guardarVisitaPendiente(this, visitaJson)
+    }
+
     private fun guardarDatosTemporales() {
         val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)?.text.toString()
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)?.text.toString()
         val comentariosTexto = findViewById<TextInputLayout>(R.id.comentarios)?.editText?.text?.toString() ?: ""
         val insumosUsados = adapter.obtenerLista().filter { it.cantidad > 0 }
-        val insumosJson = insumosUsados.joinToString(";") { "${it.codigo}:${it.cantidad}" }
         val procedimientosSeleccionados = JSONArray()
         procedimientoAdapter.obtenerProcedimientosSeleccionados().forEach {
             procedimientosSeleccionados.put(it.nombre)
@@ -363,11 +433,66 @@ class VisitaPaciente : AppCompatActivity() {
             put("hora_salida", horaSalidaText)
             put("comentarios", comentariosTexto)
             put("procedimientos", procedimientosSeleccionados)
-            put("insumos", insumosJson)
+            put("insumos", JSONArray(insumosUsados.map { JSONObject().apply {
+                put("codigo", it.codigo)
+                put("cantidad", it.cantidad)
+            }}))
             put("estado_visita", ESTADO_EN_PROGRESO)
         }
         jsonData.put(nombrePaciente, pacienteData)
         JsonUtils.saveData(this, jsonData)
+    }
+
+    private fun sincronizarVisitasPendientes(context: Context) {
+        val pendientes = SyncStorage.obtenerVisitasPendientes(context)
+        if (pendientes.length() == 0) return
+
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null) ?: return
+        val api = RetrofitClient.getInstance(token)
+
+        for (i in 0 until pendientes.length()) {
+            val visita = pendientes.getJSONObject(i)
+            val visitaId = visita.getInt("visita_id")
+            val llegada = visita.getString("hora_llegada")
+            val salida = visita.getString("hora_salida")
+            val insumos = visita.getJSONArray("insumos")
+            val listaInsumos = mutableListOf<InsumoConsumidoRequest>()
+            for (j in 0 until insumos.length()) {
+                val insumo = insumos.getJSONObject(j)
+                listaInsumos.add(InsumoConsumidoRequest(insumo.getInt("codigo"), insumo.getInt("cantidad")))
+            }
+
+            api.registrarHoras(visitaId, HorasVisitaRequest(llegada, salida)).enqueue(object : Callback<ResponseBody> {
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                    Log.d("SYNC", "Horas sincronizadas para visita $visitaId")
+                }
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    Log.e("SYNC", "Fallo horas: $t")
+                }
+            })
+
+            api.registrarInsumosConsumidos(visitaId, listaInsumos).enqueue(object : Callback<ResponseBody> {
+                override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                    Log.d("SYNC", "Insumos sincronizados para visita $visitaId")
+                }
+                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                    Log.e("SYNC", "Fallo insumos: $t")
+                }
+            })
+
+            api.updateVisitStatus(visitaId, VisitStatusRequest("COMPLETADA"))
+                .enqueue(object : Callback<ResponseBody> {
+                    override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                        Log.d("SYNC", "Estado sincronizado visita $visitaId")
+                    }
+                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                        Log.e("SYNC", "Fallo estado: $t")
+                    }
+                })
+        }
+
+        SyncStorage.limpiar(context)
     }
 
     private fun configurarInterfazSegunEstado() {

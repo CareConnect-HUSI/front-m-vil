@@ -1,13 +1,18 @@
 package com.example.careconnect.main.listaPacientes
 
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -16,7 +21,12 @@ import com.example.careconnect.R
 import com.example.careconnect.main.inicioSesion.LoginActivity
 import com.example.careconnect.main.infoPacientes.DetallePacienteActivity
 import com.example.careconnect.main.retroFit.RetrofitClient
+import com.example.careconnect.main.dataUsuarios.Paciente
+import com.example.careconnect.main.visitaPaciente.NetworkRestoredReceiver
 import kotlinx.coroutines.launch
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -25,30 +35,25 @@ class PacientesActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var nombreEnfermera: String
     private lateinit var jwtToken: String
+    private lateinit var networkRestoredReceiver: BroadcastReceiver
+    private lateinit var adapter: PacienteAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pacientes)
 
         findViewById<ImageView>(R.id.btnBack).visibility = View.INVISIBLE
+        findViewById<ImageView>(R.id.btnLogout).setOnClickListener { mostrarDialogoCerrarSesion() }
 
-        findViewById<ImageView>(R.id.btnLogout).setOnClickListener {
-            mostrarDialogoCerrarSesion()
-        }
-
-        // Obtener nombre de enfermera
         nombreEnfermera = intent.getStringExtra("NOMBRE_ENFERMERA") ?: "Enfermera"
         findViewById<TextView>(R.id.nurse_name).text = nombreEnfermera
 
-        // Mostrar fecha actual
         val fechaActual = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.fechaHoy).text = fechaActual
 
-        // Configurar RecyclerView
         recyclerView = findViewById(R.id.recyclerViewPacientes)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        // Cargar token
         val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
         jwtToken = prefs.getString("JWT_TOKEN", null) ?: ""
 
@@ -65,6 +70,17 @@ class PacientesActivity : AppCompatActivity() {
         if (jwtToken.isNotBlank()) {
             cargarListaPacientes()
         }
+
+        networkRestoredReceiver = NetworkRestoredReceiver {
+            actualizarListaDePacientes()
+        }
+        registerReceiver(networkRestoredReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
+
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(networkRestoredReceiver)
     }
 
     private fun cargarListaPacientes() {
@@ -72,15 +88,33 @@ class PacientesActivity : AppCompatActivity() {
             try {
                 val api = RetrofitClient.getInstance(jwtToken)
                 val pacientesFromApi = api.getPacientesAsignados("Bearer $jwtToken")
-//                val pacientes = api.getPacientesAsignados("Bearer $jwtToken")
                 val pacientes = pacientesFromApi.map { paciente ->
                     paciente.copy(estadoVisita = obtenerEstado(paciente.nombre))
                 }
                 Log.d("DEBUG_PACIENTES", pacientes.joinToString("\n"))
-                recyclerView.adapter = PacienteAdapter(this@PacientesActivity, pacientes)
+                adapter = PacienteAdapter(this@PacientesActivity, pacientes)
+                recyclerView.adapter = adapter
             } catch (e: Exception) {
                 e.printStackTrace()
                 Toast.makeText(this@PacientesActivity, "Error al cargar pacientes", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun actualizarListaDePacientes() {
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null) ?: return
+        val api = RetrofitClient.getInstance(token)
+
+        lifecycleScope.launch {
+            try {
+                val pacientes = api.getPacientesAsignados("Bearer $token")
+                val pacientesActualizados = pacientes.map { paciente ->
+                    paciente.copy(estadoVisita = obtenerEstado(paciente.nombre))
+                }
+                (recyclerView.adapter as? PacienteAdapter)?.actualizarLista(pacientesActualizados)
+            } catch (e: Exception) {
+                Log.e("PACIENTES_SYNC", "Error al actualizar pacientes tras reconexión", e)
             }
         }
     }
@@ -104,7 +138,6 @@ class PacientesActivity : AppCompatActivity() {
         finish()
     }
 
-    // Utilidad para leer estado de visita desde JSON local
     private fun obtenerEstado(nombre: String): String {
         val jsonData = DetallePacienteActivity.JsonUtils.loadData(this)
         val estado = jsonData.optJSONObject(nombre)?.optInt("estado_visita", 0) ?: 0
@@ -114,5 +147,12 @@ class PacientesActivity : AppCompatActivity() {
             2 -> "FINALIZADA"
             else -> "NO_INICIADA"
         }
+    }
+
+    private fun hayInternet(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }

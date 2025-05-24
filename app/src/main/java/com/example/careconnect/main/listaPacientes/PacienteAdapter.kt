@@ -101,6 +101,14 @@ class PacienteAdapter(private val context: Context, private val pacientes: List<
         }
     }
 
+    fun actualizarLista(nuevaLista: List<Paciente>) {
+        (pacientes as? MutableList)?.apply {
+            clear()
+            addAll(nuevaLista)
+            notifyDataSetChanged()
+        }
+    }
+
     private fun mostrarEstado(holder: ViewHolder, estado: String) {
         holder.iconoCompletado.visibility = View.GONE
         holder.iconoEspera.visibility = View.GONE
