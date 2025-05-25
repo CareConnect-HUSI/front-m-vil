@@ -128,26 +128,12 @@ class DetallePacienteActivity : AppCompatActivity() {
                         val distancia = calcularDistancia(latUsuario, lonUsuario, latPaciente, lonPaciente)
 
                         if (distancia <= 500.0) {
-                            val intent = Intent(this, VisitaPaciente::class.java)
-                            intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)
-                            intent.putExtra("VISITA_ID", visitaId) // <-- Make sure visitaId is valid
-
-                            val estadoActual = cargarEstadoVisita(nombrePaciente)
-
                             if (estadoActual == VisitaPaciente.ESTADO_NO_INICIADA) {
                                 updateVisitStatusToEnProgreso(visitaId, nombrePaciente)
-                                intent.putExtra("NUEVA_VISITA", true)
-                                val horaActual = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                                intent.putExtra("HORA_LLEGADA", horaActual)
                                 guardarEstadoVisita(nombrePaciente, VisitaPaciente.ESTADO_EN_PROGRESO)
                             } else {
-                                intent.putExtra("ESTADO_VISITA", estadoActual)
                                 proceedToVisitaPaciente(visitaId, nombrePaciente, estadoActual)
-
                             }
-
-                            startActivity(intent)
-
                         } else {
                             Toast.makeText(this, "No te encuentras en el lugar de la visita", Toast.LENGTH_SHORT).show()
                         }
@@ -163,6 +149,7 @@ class DetallePacienteActivity : AppCompatActivity() {
             }
         }
     }
+
     private fun updateVisitStatusToEnProgreso(visitaId: Int, nombrePaciente: String) {
         if (visitaId == -1) {
             Log.e("STATUS_API", "Invalid visitaId: $visitaId")
@@ -201,6 +188,7 @@ class DetallePacienteActivity : AppCompatActivity() {
             }
         })
     }
+
     private fun proceedToVisitaPaciente(visitaId: Int, nombrePaciente: String, estadoActual: Int) {
         val intent = Intent(this, VisitaPaciente::class.java)
         intent.putExtra("NOMBRE_PACIENTE", nombrePaciente)

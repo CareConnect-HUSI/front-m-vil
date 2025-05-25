@@ -135,13 +135,13 @@ class VisitaPaciente : AppCompatActivity() {
 
         estadoVisita = intent.getIntExtra("ESTADO_VISITA", ESTADO_NO_INICIADA)
         visitaId = intent.getIntExtra("VISITA_ID", -1)
-
         val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: "Desconocido"
         findViewById<TextView>(R.id.detalle_nombre_paciente)?.text = nombrePaciente
 
         if (intent.getBooleanExtra("NUEVA_VISITA", false)) {
             estadoVisita = ESTADO_EN_PROGRESO
             val horaLlegada = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            findViewById<TextView>(R.id.hora_llegada_text)?.text = horaLlegada
             val jsonData = JsonUtils.loadData(this)
             val pacienteData = JSONObject().apply {
                 put("hora_llegada", horaLlegada)
@@ -149,7 +149,6 @@ class VisitaPaciente : AppCompatActivity() {
             }
             jsonData.put(nombrePaciente, pacienteData)
             JsonUtils.saveData(this, jsonData)
-            findViewById<TextView>(R.id.hora_llegada_text)?.text = horaLlegada
         }
 
         val comentarios = intent.getStringExtra("COMENTARIOS_VISITA") ?: ""
@@ -158,7 +157,6 @@ class VisitaPaciente : AppCompatActivity() {
         val horaSalidaText = findViewById<TextView>(R.id.hora_salida_text)
         val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)
         val jsonData = JsonUtils.loadData(this)
-
         if (jsonData.has(nombrePaciente)) {
             val pacienteData = jsonData.getJSONObject(nombrePaciente)
             horaLlegadaText?.text = pacienteData.optString("hora_llegada", "")
@@ -173,8 +171,6 @@ class VisitaPaciente : AppCompatActivity() {
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        obtenerInsumosDesdeBackend()
-
         findViewById<ImageView>(R.id.btnBack)?.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         findViewById<ImageView>(R.id.btnLogout)?.setOnClickListener { mostrarDialogoCerrarSesion() }
         botonGuardar.setOnClickListener { mostrarDialogoGuardarDatos() }
@@ -183,18 +179,84 @@ class VisitaPaciente : AppCompatActivity() {
             VisitaSyncUtils.sincronizarVisitasPendientes(this)
         }
         registerReceiver(networkReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
+
+        obtenerInsumosDesdeBackend()
         obtenerProcedimientosDesdeBackend()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(networkReceiver)
-        unregisterReceiver(restablecerReceiver)
+    }
+
+    private fun obtenerInsumosDesdeBackend() {
+        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
+        val token = prefs.getString("JWT_TOKEN", null)
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE")
+
+        if (token != null && visitaId != -1) {
+            val api = RetrofitClient.getInstance(token)
+            api.getInsumosPorVisita(visitaId).enqueue(object : Callback<List<Insumo>> {
+                override fun onResponse(call: Call<List<Insumo>>, response: Response<List<Insumo>>) {
+                    if (response.isSuccessful) {
+                        val insumos = response.body() ?: emptyList()
+
+                        if (estadoVisita == ESTADO_COMPLETADA) {
+                            api.getInsumosConsumidos(visitaId).enqueue(object : Callback<List<InsumoConsumidoRequest>> {
+                                override fun onResponse(call: Call<List<InsumoConsumidoRequest>>, response: Response<List<InsumoConsumidoRequest>>) {
+                                    if (response.isSuccessful) {
+                                        val consumidos = response.body() ?: emptyList()
+                                        val insumosActualizados = insumos.map { insumo ->
+                                            consumidos.find { it.codigo == insumo.codigo }?.let {
+                                                insumo.cantidad = it.cantidad
+                                            }
+                                            insumo
+                                        }
+                                        adapter.actualizarLista(insumosActualizados)
+                                        adapter.setEditable(false)
+                                    }
+                                }
+                                override fun onFailure(call: Call<List<InsumoConsumidoRequest>>, t: Throwable) {
+                                    Log.e("INSUMOS_API", "Fallo red al obtener insumos consumidos", t)
+                                }
+                            })
+                        } else if (estadoVisita == ESTADO_EN_PROGRESO && nombrePaciente != null) {
+                            val jsonData = JsonUtils.loadData(this@VisitaPaciente)
+                            val pacienteData = jsonData.optJSONObject(nombrePaciente)
+                            val insumosGuardados = pacienteData?.optJSONArray("insumos")
+                            val insumosActualizados = if (insumosGuardados != null) {
+                                insumos.map { insumo ->
+                                    for (i in 0 until insumosGuardados.length()) {
+                                        val insumoGuardado = insumosGuardados.getJSONObject(i)
+                                        if (insumoGuardado.getInt("codigo") == insumo.codigo) {
+                                            insumo.cantidad = insumoGuardado.getInt("cantidad")
+                                            break
+                                        }
+                                    }
+                                    insumo
+                                }
+                            } else insumos
+                            adapter.actualizarLista(insumosActualizados)
+                            adapter.setEditable(true)
+                        } else {
+                            adapter.actualizarLista(insumos)
+                        }
+
+                        configurarInterfazSegunEstado()
+                    }
+                }
+
+                override fun onFailure(call: Call<List<Insumo>>, t: Throwable) {
+                    Log.e("INSUMOS_API", "Fallo red insumos", t)
+                }
+            })
+        }
     }
 
     private fun obtenerProcedimientosDesdeBackend() {
         val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
         val token = prefs.getString("JWT_TOKEN", null)
+        val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE")
 
         if (token != null && visitaId != -1) {
             val api = RetrofitClient.getInstance(token)
@@ -202,34 +264,31 @@ class VisitaPaciente : AppCompatActivity() {
                 .enqueue(object : Callback<List<Procedimiento>> {
                     override fun onResponse(call: Call<List<Procedimiento>>, response: Response<List<Procedimiento>>) {
                         if (response.isSuccessful) {
-                            val lista = response.body() ?: emptyList()
+                            val procedimientos = response.body() ?: emptyList()
 
-                            val nombrePaciente = intent.getStringExtra("NOMBRE_PACIENTE") ?: return
-                            val jsonData = JsonUtils.loadData(this@VisitaPaciente)
-                            val pacienteData = jsonData.optJSONObject(nombrePaciente)
-                            val procedimientosGuardados = pacienteData?.optJSONArray("procedimientos")
+                            if ((estadoVisita == ESTADO_EN_PROGRESO || estadoVisita == ESTADO_COMPLETADA) && nombrePaciente != null) {
+                                val jsonData = JsonUtils.loadData(this@VisitaPaciente)
+                                val pacienteData = jsonData.optJSONObject(nombrePaciente)
+                                val procedimientosGuardados = pacienteData?.optJSONArray("procedimientos")
 
-                            lista.forEach { proc ->
                                 if (procedimientosGuardados != null) {
-                                    for (i in 0 until procedimientosGuardados.length()) {
-                                        if (procedimientosGuardados.getString(i) == proc.nombre) {
-                                            proc.realizado = true
-                                            break
+                                    procedimientos.forEach { proc ->
+                                        for (i in 0 until procedimientosGuardados.length()) {
+                                            if (procedimientosGuardados.getString(i) == proc.nombre) {
+                                                proc.realizado = true
+                                                break
+                                            }
                                         }
                                     }
                                 }
                             }
 
-                            // Mostrar en pantalla
-                            procedimientoAdapter = ProcedimientoAdapter(lista)
+                            procedimientoAdapter = ProcedimientoAdapter(procedimientos)
                             recyclerProcedimientos.adapter = procedimientoAdapter
                             procedimientoAdapter.setEditable(estadoVisita != ESTADO_COMPLETADA)
                             configurarInterfazSegunEstado()
-                        } else {
-                            Log.e("PROC_API", "Error al obtener procedimientos: ${response.code()}")
                         }
                     }
-
                     override fun onFailure(call: Call<List<Procedimiento>>, t: Throwable) {
                         Log.e("PROC_API", "Fallo de red al obtener procedimientos", t)
                     }
@@ -260,53 +319,6 @@ class VisitaPaciente : AppCompatActivity() {
             })
         }
     }
-
-    private fun obtenerInsumosDesdeBackend() {
-        val prefs = getSharedPreferences("SessionPrefs", MODE_PRIVATE)
-        val token = prefs.getString("JWT_TOKEN", null)
-
-        if (token != null && visitaId != -1) {
-            val api = RetrofitClient.getInstance(token)
-
-            api.getInsumosPorVisita(visitaId).enqueue(object : Callback<List<Insumo>> {
-                override fun onResponse(call: Call<List<Insumo>>, response: Response<List<Insumo>>) {
-                    if (response.isSuccessful) {
-                        val insumos = response.body()?.map { Insumo(it.codigo, it.insumo, 0) }?.toMutableList() ?: mutableListOf()
-
-                        if (estadoVisita == ESTADO_COMPLETADA) {
-                            api.getInsumosConsumidos(visitaId).enqueue(object : Callback<List<InsumoConsumidoRequest>> {
-                                override fun onResponse(call: Call<List<InsumoConsumidoRequest>>, response: Response<List<InsumoConsumidoRequest>>) {
-                                    if (response.isSuccessful) {
-                                        val consumidos = response.body() ?: emptyList()
-                                        consumidos.forEach { usado ->
-                                            insumos.find { it.codigo == usado.codigo }?.cantidad = usado.cantidad
-                                        }
-                                        adapter.actualizarLista(insumos)
-                                        adapter.setEditable(false)
-                                    } else {
-                                        Log.e("INSUMOS", "Error al obtener consumidos: ${response.code()}")
-                                    }
-                                }
-                                override fun onFailure(call: Call<List<InsumoConsumidoRequest>>, t: Throwable) {
-                                    Log.e("INSUMOS", "Fallo red consumidos", t)
-                                }
-                            })
-                        } else {
-                            adapter.actualizarLista(insumos)
-                            adapter.setEditable(true)
-                        }
-                    } else {
-                        Log.e("INSUMOS_API", "Error al obtener insumos: ${response.code()}")
-                    }
-                }
-
-                override fun onFailure(call: Call<List<Insumo>>, t: Throwable) {
-                    Log.e("INSUMOS_API", "Fallo red insumos", t)
-                }
-            })
-        }
-    }
-
 
     private fun guardarDatosEnJson() {
         val horaLlegadaText = findViewById<TextView>(R.id.hora_llegada_text)?.text.toString()
