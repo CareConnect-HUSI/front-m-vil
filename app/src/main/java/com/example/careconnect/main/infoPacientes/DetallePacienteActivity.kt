@@ -215,7 +215,7 @@ class DetallePacienteActivity : AppCompatActivity() {
             latitude = lat2
             longitude = lon2
         }
-        return loc1.distanceTo(loc2) / 1000
+        return loc1.distanceTo(loc2)
     }
 
     private fun guardarEstadoVisita(nombrePaciente: String, estado: Int) {
